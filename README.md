@@ -6,6 +6,8 @@
   **A community-maintained Android TV fork of [SmartTube](https://github.com/yuliskov/SmartTube).**
 
   [Latest beta builds](https://github.com/GeorgeHarbor/SmartTube/releases/tag/latest) · [Upstream project](https://github.com/yuliskov/SmartTube)
+
+  <img src="images/harbor_home.jpg" alt="SmartTube Harbor home screen" width="720">
 </div>
 
 ## Why this fork exists
