@@ -1,0 +1,45 @@
+name: Sync upstream
+
+# Merges yuliskov/SmartTube into this fork. Releases are cut separately by pushing a v* tag (see release.yml).
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: yuliskov/SmartTube
+  UPSTREAM_BRANCH: master
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          # SYNC_TOKEN (Contents + Workflows write) is needed when upstream changes .github/workflows
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Merge upstream
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch "https://github.com/$UPSTREAM_REPO.git" "$UPSTREAM_BRANCH"
+
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "Already up to date with $UPSTREAM_REPO"
+            exit 0
+          fi
+
+          # A conflict with the fork's changes fails the run, and GitHub emails you to merge by hand
+          git merge --no-edit -m "Merge $UPSTREAM_REPO@$(git rev-parse --short FETCH_HEAD)" FETCH_HEAD
+          git push origin HEAD:master

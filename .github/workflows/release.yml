@@ -1,67 +1,23 @@
-name: Sync upstream and release
+name: Release
 
-# Merges yuliskov/SmartTube into this fork and publishes a signed beta build.
-# The app's updater reads releases/download/latest/smarttube_beta2.json from this repo.
+# Builds a signed beta when a v* tag is pushed (v32.68.18 -> versionName 32.68.18) and publishes it as a versioned release.
+# The app's updater reads releases/download/latest/smarttube_beta2.json, so the rolling "latest" release is refreshed too.
 
 on:
   push:
-    branches: [ master ]
-  schedule:
-    - cron: '0 4 * * *'
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      force_release:
-        description: 'Build a release even when upstream has no new commits'
-        type: boolean
-        default: true
 
 permissions:
   contents: write
 
 concurrency:
-  group: sync-and-release
+  group: release
   cancel-in-progress: false
 
-env:
-  UPSTREAM_REPO: yuliskov/SmartTube
-  UPSTREAM_BRANCH: master
-
 jobs:
-  sync:
-    # The sync job's own merge push (made with SYNC_TOKEN) would start this workflow again
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'Merge yuliskov/SmartTube@')
-    runs-on: ubuntu-latest
-    outputs:
-      merged: ${{ steps.merge.outputs.merged }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          fetch-depth: 0
-          # SYNC_TOKEN (Contents + Workflows write) is needed when upstream changes .github/workflows
-          token: ${{ secrets.SYNC_TOKEN || github.token }}
-
-      - name: Merge upstream
-        id: merge
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch "https://github.com/$UPSTREAM_REPO.git" "$UPSTREAM_BRANCH"
-
-          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
-            echo "Already up to date with $UPSTREAM_REPO"
-            echo "merged=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # A conflict with the fork's changes fails the run, and GitHub emails you to merge by hand
-          git merge --no-edit -m "Merge $UPSTREAM_REPO@$(git rev-parse --short FETCH_HEAD)" FETCH_HEAD
-          git push origin HEAD:master
-          echo "merged=true" >> "$GITHUB_OUTPUT"
-
   release:
-    needs: sync
-    if: needs.sync.outputs.merged == 'true' || inputs.force_release || github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -69,7 +25,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          ref: master
           fetch-depth: 50 # enough history for the changelog
           submodules: recursive
           token: ${{ secrets.SYNC_TOKEN || github.token }}
@@ -111,7 +66,17 @@ jobs:
           if [ "$PUBLISHED" -ge "$CODE" ]; then
             CODE=$(( PUBLISHED + 1 ))
           fi
-          NAME="$UPSTREAM_NAME.$(( CODE % 100 ))"
+          # versionName comes from the pushed tag; manual dispatch falls back to upstream name + fork build
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            NAME="${GITHUB_REF_NAME#v}"
+            # Two-part names get a patch appended by build.gradle, which would break the APK paths below
+            if ! [[ "$NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Tag must look like v1.2.3, got $GITHUB_REF_NAME"
+              exit 1
+            fi
+          else
+            NAME="$UPSTREAM_NAME.$(( CODE % 100 ))"
+          fi
 
           sed -i "s/versionCode [0-9]\+/versionCode $CODE/; s/versionName \".*\"/versionName \"$NAME\"/" smarttubetv/build.gradle
           echo "Releasing $NAME ($CODE), previously published: $PUBLISHED"
@@ -150,12 +115,17 @@ jobs:
         env:
           NAME: ${{ steps.version.outputs.name }}
         run: |
+          NOTES=$(git log -n 10 --no-merges --pretty=format:'- %s')
+
+          # The real release for this version, kept forever and flagged as the repo's latest
+          gh release create "v$NAME" dist/* --title "SmartTube $NAME" --notes "$NOTES" --latest
+
+          # Rolling release the in-app updater polls
           git tag -f latest
           git push -f origin refs/tags/latest
-
           if gh release view latest > /dev/null 2>&1; then
-            gh release edit latest --title "SmartTube $NAME" --notes "Fork build $NAME"
+            gh release edit latest --title "SmartTube $NAME" --notes "Fork build $NAME" --latest=false
             gh release upload latest dist/* --clobber
           else
-            gh release create latest dist/* --title "SmartTube $NAME" --notes "Fork build $NAME" --latest
+            gh release create latest dist/* --title "SmartTube $NAME" --notes "Fork build $NAME" --latest=false
           fi
