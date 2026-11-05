@@ -55,7 +55,7 @@ jobs:
       - name: Set Version
         id: version
         run: |
-          UPSTREAM_CODE=$(grep -m1 'versionCode' smarttubetv/build.gradle | grep -o '[0-9]\+')
+          UPSTREAM_CODE=$(grep -m1 'versionCode [0-9]' smarttubetv/build.gradle | grep -o '[0-9]\+')
           UPSTREAM_NAME=$(grep -m1 'versionName' smarttubetv/build.gradle | awk -F'"' '{print $2}')
           PUBLISHED=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/latest/smarttube_beta2.json" \
             | jq '[.[] | .versionCode? // empty] | max // 0' || echo 0)
