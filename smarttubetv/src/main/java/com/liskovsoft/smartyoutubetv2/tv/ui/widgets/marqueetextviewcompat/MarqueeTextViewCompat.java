@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.text.Layout;
 import android.text.TextUtils.TruncateAt;
@@ -151,7 +152,18 @@ public class MarqueeTextViewCompat extends TextView {
         // When executing the parent constructor, if AttributeSet contains textSize,
         // setTextSize will be called first, and mTextView is not initialized yet
         if (mTextView != null) {
-            mTextView.setTextSize(size);
+            mTextView.setTextSize(unit, size);
+            if (!isLayoutRequested()) {
+                requestLayout();
+            }
+        }
+    }
+
+    @Override
+    public void setTypeface(Typeface tf) {
+        super.setTypeface(tf);
+        if (mTextView != null) {
+            mTextView.setTypeface(tf);
             if (!isLayoutRequested()) {
                 requestLayout();
             }
