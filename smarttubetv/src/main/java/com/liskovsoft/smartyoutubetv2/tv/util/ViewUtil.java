@@ -58,10 +58,22 @@ public class ViewUtil {
     }
 
     /**
-     * YouTube color scheme has big video cards (about 2.3 per row)
+     * YouTube color scheme has big video cards (264dp, like YouTube TV)
      */
     public static float getVideoCardScale(Context context) {
-        return isYouTubeStyle(context) ? 1.8f : 1f;
+        return isYouTubeStyle(context) ? 1.32f : 1f;
+    }
+
+    /**
+     * YouTube color scheme: cards of the selected row are 360dp wide, the rest 264dp
+     */
+    public static final float YOUTUBE_SELECTED_ROW_CARD_SCALE = 360f / 264;
+
+    /**
+     * YouTube TV marks the focused card with the outline only, without zooming it
+     */
+    public static int getFocusZoomFactor(Context context) {
+        return isYouTubeStyle(context) ? FocusHighlight.ZOOM_FACTOR_NONE : FOCUS_ZOOM_FACTOR;
     }
 
     /**
@@ -225,6 +237,65 @@ public class ViewUtil {
         if (title instanceof FrameLayout) {
             title.setBackgroundColor(transparent);
             title.setVisibility(View.GONE);
+        }
+    }
+
+    private static boolean sYouTubePaneDialog;
+
+    /**
+     * YouTube color scheme: the next dialog is opened from Settings and replaces the preview pane
+     */
+    public static void setYouTubePaneDialog(boolean enable) {
+        sYouTubePaneDialog = enable;
+    }
+
+    public static boolean isYouTubePaneDialog() {
+        return sYouTubePaneDialog && VERSION.SDK_INT >= 21;
+    }
+
+    /**
+     * YouTube color scheme: dialog fills the Settings preview pane, title and options are centered like YouTube TV
+     */
+    public static void enableYouTubePaneDialog(Context context, View rootView) {
+        if (!sYouTubePaneDialog || context == null || rootView == null || VERSION.SDK_INT < 21) {
+            return;
+        }
+
+        // Usually null. Present only on parent fragment.
+        View mainContainer = rootView.findViewById(R.id.settings_preference_fragment_container);
+        if (mainContainer instanceof FrameLayout) {
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mainContainer.getLayoutParams();
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            lp.setMarginStart(context.getResources().getDimensionPixelSize(R.dimen.youtube_settings_pane_start));
+            lp.topMargin = context.getResources().getDimensionPixelSize(R.dimen.youtube_settings_pane_top); // keep the title bar visible
+            mainContainer.setLayoutParams(lp);
+            mainContainer.setElevation(0);
+        }
+
+        View titleContainer = rootView.findViewById(R.id.decor_title_container);
+        if (titleContainer != null) {
+            titleContainer.setElevation(0);
+        }
+
+        View title = rootView.findViewById(R.id.decor_title);
+        if (title instanceof TextView) {
+            ((TextView) title).setGravity(Gravity.CENTER);
+        }
+
+        for (int id : new int[] {R.id.list, android.R.id.list}) {
+            View list = rootView.findViewById(id);
+            if (list == null) {
+                continue;
+            }
+
+            ViewGroup.LayoutParams lp = list.getLayoutParams();
+            lp.width = context.getResources().getDimensionPixelSize(R.dimen.youtube_settings_option_width);
+            if (lp instanceof LinearLayout.LayoutParams) {
+                ((LinearLayout.LayoutParams) lp).gravity = Gravity.CENTER_HORIZONTAL;
+            } else if (lp instanceof FrameLayout.LayoutParams) {
+                ((FrameLayout.LayoutParams) lp).gravity = Gravity.CENTER_HORIZONTAL;
+            }
+            list.setLayoutParams(lp);
         }
     }
 

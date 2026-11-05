@@ -429,7 +429,7 @@ public class MainUIData extends DataChangeBase implements ProfileChangeListener 
                 R.string.color_scheme_youtube,
                 "App.Theme.DarkGrey.Player",
                 "App.Theme.YouTube.Browse",
-                "App.Theme.DarkGrey.Preferences",
+                "App.Theme.YouTube.Preferences",
                 mContext));
     }
 

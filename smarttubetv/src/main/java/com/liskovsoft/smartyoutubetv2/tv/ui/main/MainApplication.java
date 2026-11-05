@@ -34,6 +34,9 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.playback.PlaybackActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.search.tags.SearchTagsActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.signin.SignInActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.webbrowser.WebBrowserActivity;
+import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.browse.YouTubeAccountPicker;
+import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
+import com.liskovsoft.smartyoutubetv2.common.app.presenters.dialogs.AccountSelectionPresenter;
 
 import org.conscrypt.Conscrypt;
 
@@ -108,6 +111,13 @@ public class MainApplication extends MultiDexApplication implements Configuratio
         viewManager.register(BrowseView.class, BrowseActivity.class); // no parent, because it's root activity
         viewManager.register(PlaybackView.class, PlaybackActivity.class, BrowseActivity.class);
         viewManager.register(AppDialogView.class, dialogClass, BrowseActivity.class);
+        AccountSelectionPresenter.setAccountPicker(context -> {
+            if (!ViewUtil.isYouTubeStyle(context)) {
+                return false;
+            }
+            YouTubeAccountPicker.show(context);
+            return true;
+        });
         viewManager.register(SearchView.class, SearchTagsActivity.class, BrowseActivity.class);
         viewManager.register(SignInView.class, SignInActivity.class, BrowseActivity.class);
         viewManager.register(AddDeviceView.class, AddDeviceActivity.class, BrowseActivity.class);

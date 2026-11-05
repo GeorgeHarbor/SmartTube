@@ -57,6 +57,43 @@
     <!-- YouTube color scheme: width of the icon-only sidebar while the content is focused -->
     <dimen name="youtube_sidebar_rail_width">64dp</dimen>
     <dimen name="youtube_pill_button_padding">32dp</dimen>
+    <!-- YouTube color scheme: round title bar buttons, as tall as the search field -->
+    <dimen name="youtube_title_button_size">36dp</dimen>
+    <dimen name="youtube_title_avatar_size">27dp</dimen>
+    <dimen name="youtube_title_avatar_margin_end">25.5dp</dimen>
+    <!-- YouTube color scheme: the open sidebar pushes the content (and the search field) to the right -->
+    <dimen name="youtube_sidebar_expanded_width">254dp</dimen>
+    <dimen name="youtube_sidebar_expand_shift">190dp</dimen>
+    <dimen name="youtube_sidebar_top">136dp</dimen>
+    <!-- YouTube color scheme: video cards -->
+    <dimen name="youtube_card_focus_width">4dp</dimen>
+    <!-- Settings: the dialog replaces the preview pane right of the list, options are 314dp pills -->
+    <dimen name="youtube_search_bar_top">31dp</dimen>
+    <dimen name="youtube_search_field_width">515dp</dimen>
+    <dimen name="youtube_search_field_collapsed_width">315dp</dimen>
+    <dimen name="youtube_search_mic_start">78dp</dimen>
+    <dimen name="youtube_search_field_margin_start">9.5dp</dimen>
+    <dimen name="youtube_search_text_margin_start">15.5dp</dimen>
+    <dimen name="youtube_search_logo_top">40dp</dimen>
+    <dimen name="youtube_search_logo_end">54.5dp</dimen>
+    <dimen name="youtube_search_panel_top">84dp</dimen>
+    <dimen name="youtube_search_rows_start">67.5dp</dimen>
+    <dimen name="youtube_search_rows_top">128dp</dimen>
+    <dimen name="youtube_search_rows_panel_shift">168.5dp</dimen>
+    <dimen name="youtube_settings_pane_start">296dp</dimen>
+    <dimen name="youtube_settings_pane_top">87dp</dimen>
+    <dimen name="youtube_settings_option_width">338dp</dimen>
+    <dimen name="youtube_row_padding_top">7dp</dimen>
+    <dimen name="youtube_row_padding_bottom">15dp</dimen>
+    <dimen name="youtube_card_info_padding_top">5.5dp</dimen>
+    <!-- Cancels the title line spacing under the last line -->
+    <dimen name="youtube_card_content_margin_top">-5dp</dimen>
+    <dimen name="youtube_card_title_text_size">18sp</dimen>
+    <dimen name="youtube_card_title_line_spacing">3dp</dimen>
+    <dimen name="youtube_card_content_text_size">12.5sp</dimen>
+    <dimen name="youtube_card_content_line_spacing">4dp</dimen>
+    <!-- YouTube color scheme: how much lower the featured row sits to make room for the featured video details -->
+    <dimen name="youtube_hero_row_shift">174dp</dimen>
 
     <!-- Make search bar more compact so more buttons could be added after it. -->
     <dimen name="lb_search_bar_items_width">600dp</dimen>

@@ -30,6 +30,21 @@ public class AccountSelectionPresenter extends BasePresenter<Void> {
     @SuppressLint("StaticFieldLeak")
     private static AccountSelectionPresenter sInstance;
     private final SignInService mSignInService;
+    private static AccountPicker sAccountPicker;
+
+    /**
+     * Replaces the selection dialog (e.g. a full screen picker of the color scheme)
+     */
+    public interface AccountPicker {
+        /**
+         * @return false to show the dialog instead
+         */
+        boolean show(Context context);
+    }
+
+    public static void setAccountPicker(AccountPicker picker) {
+        sAccountPicker = picker;
+    }
 
     public AccountSelectionPresenter(Context context) {
         super(context);
@@ -72,6 +87,11 @@ public class AccountSelectionPresenter extends BasePresenter<Void> {
 
     private void createAndShowDialog(List<Account> accounts, List<Drawable> icons, boolean force) {
         if (accounts.size() <= 1 && !force) {
+            return;
+        }
+
+        if (sAccountPicker != null && sAccountPicker.show(getContext())) {
+            unhold();
             return;
         }
 

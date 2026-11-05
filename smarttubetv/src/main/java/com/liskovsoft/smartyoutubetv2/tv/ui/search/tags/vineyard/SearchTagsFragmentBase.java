@@ -2,11 +2,25 @@ package com.liskovsoft.smartyoutubetv2.tv.ui.search.tags.vineyard;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.MarginLayoutParams;
+import android.view.ViewTreeObserver.OnGlobalFocusChangeListener;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
+import androidx.core.content.ContextCompat;
 import androidx.leanback.app.RowsSupportFragment;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.HeaderItem;
@@ -14,7 +28,10 @@ import androidx.leanback.widget.ListRow;
 import androidx.leanback.widget.ListRowPresenter;
 import androidx.leanback.widget.ObjectAdapter;
 import androidx.leanback.widget.RowPresenter.ViewHolder;
+import androidx.leanback.widget.SearchOrbView.Colors;
+import androidx.leanback.widget.SpeechOrbView;
 import androidx.leanback.widget.SpeechRecognitionCallback;
+import androidx.leanback.widget.VerticalGridView;
 import com.liskovsoft.sharedutils.helpers.MessageHelpers;
 import com.liskovsoft.sharedutils.helpers.PermissionHelpers;
 import com.liskovsoft.sharedutils.mylogger.Log;
@@ -31,6 +48,8 @@ import com.liskovsoft.smartyoutubetv2.tv.presenter.base.OnItemLongPressedListene
 import com.liskovsoft.smartyoutubetv2.tv.presenter.vineyard.TagPresenter;
 import com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.misc.ProgressBarManager;
 import com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.search.SearchSupportFragment;
+import com.liskovsoft.smartyoutubetv2.tv.ui.search.tags.YouTubeSearchKeyboard;
+import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
 
 import net.gotev.speech.GoogleVoiceTypingDisabledException;
 import net.gotev.speech.Speech;
@@ -55,13 +74,21 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
     private boolean mIsStopping;
     private SearchTagsProvider mSearchTagsProvider;
     private ProgressBarManager mProgressBarManager;
+    private OnItemLongPressedListener mTagsLongPressListener;
+    // YouTube color scheme: on-screen keyboard instead of the tags row and the system keyboard
+    private YouTubeSearchKeyboard mKeyboard;
+    private View mSearchField;
+    private View mResultsFrame;
+    private boolean mIsKeyboardExpanded = true;
+    private OnGlobalFocusChangeListener mFocusListener;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mProgressBarManager = new ProgressBarManager();
-        mResultsPresenter = new CustomListRowPresenter();
+        mResultsPresenter = new CustomListRowPresenter(ViewUtil.getFocusZoomFactor(getContext()));
+        mResultsPresenter.setShadowEnabled(!ViewUtil.isYouTubeStyle(getContext()));
         mResultsPresenter.enableChildRoundedCorners(getMainUIData().isUiTweakEnabled(MainUIData.UI_TWEAK_ROUNDED_CORNERS));
         mResultsAdapter = new ArrayObjectAdapter(mResultsPresenter);
         mTagsPresenter = new TagPresenter();
@@ -76,13 +103,53 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
 
         mProgressBarManager.setRootView((ViewGroup) root);
 
+        if (ViewUtil.isYouTubeStyle(getContext())) {
+            enableYouTubeKeyboard((ViewGroup) root);
+        }
+
         return root;
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (mFocusListener != null && getView() != null) {
+            getView().getViewTreeObserver().removeOnGlobalFocusChangeListener(mFocusListener);
+        }
+        mFocusListener = null;
+        mKeyboard = null;
+        super.onDestroyView();
     }
 
     @Override
     public void onStart() {
         super.onStart();
         mIsStopping = false;
+
+        if (mKeyboard != null) {
+            VerticalGridView list = getRowsSupportFragment().getVerticalGridView();
+            // UP from the first row brings the keyboard back
+            list.setOnKeyInterceptListener(event -> {
+                if (!mIsKeyboardExpanded && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP
+                        && getRowsSupportFragment().getSelectedPosition() <= 0) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        setKeyboardExpanded(true);
+                        mKeyboard.focusBottom();
+                    }
+                    return true;
+                }
+                return false;
+            });
+            setKeyboardExpanded(mIsKeyboardExpanded);
+        }
+    }
+
+    @Override
+    public void focusOnSearchField() {
+        if (mKeyboard != null) {
+            mKeyboard.focus();
+        } else {
+            super.focusOnSearchField();
+        }
     }
 
     @Override
@@ -130,6 +197,7 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
     }
 
     protected void setSearchTagsLongPressListener(OnItemLongPressedListener listener) {
+        mTagsLongPressListener = listener;
         mTagsPresenter.setOnItemViewLongPressedListener(listener);
     }
 
@@ -206,6 +274,11 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
 
         String query = adapter.getAdapterOptions().get(PaginationAdapter.KEY_TAG);
         mSearchTagsProvider.search(query, results -> {
+            if (mKeyboard != null) {
+                mKeyboard.setSuggestions(results);
+                return;
+            }
+
             adapter.addAllItems(results);
             attachAdapter(0, adapter);
             // Same suggestions in the keyboard
@@ -266,12 +339,20 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
     }
 
     protected void clearTags() {
+        if (mKeyboard != null) {
+            mKeyboard.setSuggestions(null);
+        }
+
         if (containsAdapter(mSearchTagsAdapter)) {
             detachAdapter(0);
         }
     }
 
     protected void removeTag(Tag tag) {
+        if (mKeyboard != null) {
+            mKeyboard.removeSuggestion(tag);
+        }
+
         if (containsAdapter(mSearchTagsAdapter)) {
             mSearchTagsAdapter.remove(tag);
             if (mSearchTagsAdapter.size() == 0) {
@@ -290,6 +371,155 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
             }
         }
 
+        return false;
+    }
+
+    /**
+     * YouTube color scheme: mic | search field (display only) ... logo, suggestions and keyboard below.<br/>
+     * The keyboard hides while the results are focused.
+     */
+    private void enableYouTubeKeyboard(ViewGroup root) {
+        Context context = root.getContext();
+        Resources res = context.getResources();
+
+        mKeyboard = new YouTubeSearchKeyboard(context, new YouTubeSearchKeyboard.Callback() {
+            @Override
+            public String getText() {
+                return getSearchBarText();
+            }
+
+            @Override
+            public void setText(String text) {
+                setSearchQuery(text, false);
+            }
+
+            @Override
+            public void onSubmit(String text) {
+                if (!TextUtils.isEmpty(text)) {
+                    onItemViewClicked(new Tag(text));
+                }
+            }
+
+            @Override
+            public void onSuggestionClicked(Tag tag) {
+                onItemViewClicked(tag);
+            }
+
+            @Override
+            public void onSuggestionLongClicked(Tag tag) {
+                if (mTagsLongPressListener != null) {
+                    mTagsLongPressListener.onItemLongPressed(null, tag);
+                }
+            }
+
+            @Override
+            public void onSettingsClicked() {
+                onSearchSettingsClicked();
+            }
+        });
+        FrameLayout.LayoutParams keyboardParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        keyboardParams.topMargin = res.getDimensionPixelSize(R.dimen.youtube_search_panel_top);
+        root.addView(mKeyboard.getView(), keyboardParams);
+
+        ImageView logo = new ImageView(context);
+        logo.setImageResource(R.drawable.youtube_premium_logo);
+        logo.setContentDescription(res.getString(R.string.youtube_logo_text));
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        logoParams.topMargin = res.getDimensionPixelSize(R.dimen.youtube_search_logo_top);
+        logoParams.setMarginEnd(res.getDimensionPixelSize(R.dimen.youtube_search_logo_end));
+        root.addView(logo, logoParams);
+
+        View bar = root.findViewById(R.id.lb_search_bar);
+        ((MarginLayoutParams) bar.getLayoutParams()).topMargin = res.getDimensionPixelSize(R.dimen.youtube_search_bar_top);
+        bar.findViewById(R.id.lb_search_bar_search_orb).setVisibility(View.GONE);
+        bar.findViewById(R.id.search_settings_orb).setVisibility(View.GONE); // moved to the globe key
+
+        int buttonSize = res.getDimensionPixelSize(R.dimen.youtube_title_button_size);
+
+        // No system keyboard: the field only shows what is typed on the on-screen one
+        TextView editor = bar.findViewById(R.id.lb_search_text_editor);
+        editor.setFocusable(false);
+        editor.setFocusableInTouchMode(false);
+        editor.setCursorVisible(false);
+        ((MarginLayoutParams) editor.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_text_margin_start));
+        editor.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        editor.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        int textColor = ContextCompat.getColor(context, R.color.youtube_sidebar_item_text);
+        int hintColor = ContextCompat.getColor(context, R.color.scheme_youtube_secondary_text);
+        editor.setTextColor(textColor);
+        editor.setHintTextColor(hintColor);
+        mSearchField = bar.findViewById(R.id.lb_search_bar_items);
+        mSearchField.setBackgroundResource(R.drawable.youtube_search_pill);
+        MarginLayoutParams fieldParams = (MarginLayoutParams) mSearchField.getLayoutParams();
+        fieldParams.height = buttonSize;
+        fieldParams.setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_field_margin_start));
+
+        SpeechOrbView mic = bar.findViewById(R.id.lb_search_bar_speech_orb);
+        ((MarginLayoutParams) mic.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_mic_start));
+        View micCircle = mic.findViewById(R.id.search_orb);
+        micCircle.getLayoutParams().width = buttonSize;
+        micCircle.getLayoutParams().height = buttonSize;
+        Colors normal = new Colors(ContextCompat.getColor(context, R.color.scheme_youtube_thumbnail),
+                ContextCompat.getColor(context, R.color.scheme_youtube_thumbnail), Color.WHITE);
+        Colors focused = new Colors(Color.WHITE, Color.WHITE, ContextCompat.getColor(context, R.color.scheme_youtube_background));
+        mic.setNotListeningOrbColors(normal);
+        mic.setOrbColors(normal);
+        mic.setOrbIcon(ContextCompat.getDrawable(context, R.drawable.youtube_mic));
+        View.OnFocusChangeListener micListener = mic.getOnFocusChangeListener();
+        mic.setOnFocusChangeListener((v, hasFocus) -> {
+            if (micListener != null) {
+                micListener.onFocusChange(v, hasFocus);
+            }
+            Colors colors = hasFocus ? focused : normal;
+            mic.setNotListeningOrbColors(colors);
+            mic.setOrbColors(colors);
+            mic.setOrbIcon(ContextCompat.getDrawable(context, R.drawable.youtube_mic));
+            // The bar dims the text on focus changes
+            editor.setTextColor(textColor);
+            editor.setHintTextColor(hintColor);
+        });
+
+        mResultsFrame = root.findViewById(R.id.lb_results_frame);
+        ((MarginLayoutParams) mResultsFrame.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_rows_start));
+        mFocusListener = (oldFocus, newFocus) -> {
+            if (newFocus != null && mKeyboard != null) {
+                setKeyboardExpanded(!isDescendant(mResultsFrame, newFocus));
+            }
+        };
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener(mFocusListener);
+
+        mResultsAdapter.registerObserver(new ObjectAdapter.DataObserver() {
+            @Override
+            public void onChanged() {
+                if (mKeyboard != null) {
+                    mKeyboard.setHasResults(mResultsAdapter.size() > 0);
+                }
+            }
+        });
+    }
+
+    private void setKeyboardExpanded(boolean expanded) {
+        mIsKeyboardExpanded = expanded;
+        Resources res = getResources();
+        mKeyboard.getView().setVisibility(expanded ? View.VISIBLE : View.GONE);
+        int width = res.getDimensionPixelSize(expanded ? R.dimen.youtube_search_field_width : R.dimen.youtube_search_field_collapsed_width);
+        if (mSearchField.getLayoutParams().width != width) {
+            mSearchField.getLayoutParams().width = width;
+            mSearchField.requestLayout();
+        }
+        VerticalGridView list = getRowsSupportFragment() != null ? getRowsSupportFragment().getVerticalGridView() : null;
+        if (list != null) {
+            list.setWindowAlignmentOffset(res.getDimensionPixelSize(R.dimen.youtube_search_rows_top)
+                    + (expanded ? res.getDimensionPixelSize(R.dimen.youtube_search_rows_panel_shift) : 0));
+        }
+    }
+
+    private static boolean isDescendant(View parent, View view) {
+        for (Object v = view; v instanceof View; v = ((View) v).getParent()) {
+            if (v == parent) {
+                return true;
+            }
+        }
         return false;
     }
 

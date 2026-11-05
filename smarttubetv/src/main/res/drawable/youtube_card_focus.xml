@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: 4dp outline around the thumbnail (drawn in the thumbnail's padding) -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_selected="true">
         <shape>
-            <stroke android:width="3dp" android:color="@android:color/white"/>
-            <corners android:radius="8dp"/>
+            <stroke android:width="@dimen/youtube_card_focus_width" android:color="#F1F1F1"/>
+            <corners android:radius="12dp"/>
         </shape>
     </item>
     <item android:drawable="@android:color/transparent"/>

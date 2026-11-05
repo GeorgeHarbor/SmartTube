@@ -23,9 +23,7 @@ import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.liskovsoft.mediaserviceinterfaces.oauth.Account;
 import com.liskovsoft.sharedutils.locale.LocaleUtility;
-import com.liskovsoft.smartyoutubetv2.common.app.models.data.SettingsItem;
-import com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.UiOptionItem;
-import com.liskovsoft.smartyoutubetv2.common.app.presenters.AppDialogPresenter;
+import com.liskovsoft.smartyoutubetv2.common.app.presenters.SearchPresenter;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.dialogs.PendingAppUpdate;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter;
@@ -35,7 +33,6 @@ import com.liskovsoft.smartyoutubetv2.common.app.presenters.settings.LanguageSet
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.settings.RemoteControlSettingsPresenter;
 import com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView;
 import com.liskovsoft.smartyoutubetv2.common.app.views.ViewManager;
-import com.liskovsoft.smartyoutubetv2.common.misc.AppDataSourceManager;
 import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager;
 import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.AccountChangeListener;
 import com.liskovsoft.smartyoutubetv2.common.prefs.common.DataChangeBase.OnDataChange;
@@ -72,7 +69,8 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
     private SearchOrbView mSearchOrbView;
     private TextView mSearchPill;
     private View mYouTubeLogo;
-    private SearchOrbView mSettingsView;
+    private SearchOrbView mMicView;
+    private TextView mAccountName;
     private SearchOrbView mUpdateView;
     private SearchOrbView mCastView;
     private boolean mInitDone;
@@ -190,8 +188,8 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
         if (mSearchPill != null) {
             mSearchOrbView.setVisibility(View.GONE);
             mSearchPill.setVisibility(mSearchVisibility);
+            mMicView.setVisibility(mSearchVisibility);
             mYouTubeLogo.setVisibility(mSearchVisibility);
-            mSettingsView.setVisibility(mSearchVisibility);
             mCastView.setVisibility(mSearchVisibility);
             updateUpdateButton();
         }
@@ -200,11 +198,29 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
     /**
      * Icon only, white circle with a dark icon when focused (instead of the faint orb pulse)
      */
-    private void enableYouTubeFocus(SearchOrbView orb, int iconColor) {
-        Colors normal = new Colors(Color.TRANSPARENT, Color.TRANSPARENT, iconColor);
+    private void enableYouTubeFocus(SearchOrbView orb, int color, int iconColor) {
+        Colors normal = new Colors(color, color, iconColor);
         Colors focused = new Colors(Color.WHITE, Color.WHITE, ContextCompat.getColor(getContext(), R.color.scheme_youtube_background));
         orb.setOrbColors(normal);
         orb.setOnFocusChangeListener((v, hasFocus) -> orb.setOrbColors(hasFocus ? focused : normal));
+    }
+
+    /**
+     * YouTube color scheme: the open sidebar pushes the search to the right, the account name shows up next to the picture
+     */
+    public void setSidebarExpanded(boolean expanded) {
+        if (mSearchPill == null) {
+            return;
+        }
+
+        float shift = expanded ? getResources().getDimension(R.dimen.youtube_sidebar_expand_shift) : 0;
+        mMicView.animate().translationX(shift);
+        mSearchPill.animate().translationX(shift);
+
+        Account current = MediaServiceManager.instance().getSelectedAccount();
+        String name = current != null ? (current.getName() != null ? current.getName() : current.getEmail()) : null;
+        mAccountName.setText(name);
+        mAccountName.setVisibility(expanded && name != null && mAccountView.getVisibility() == View.VISIBLE ? View.VISIBLE : View.GONE);
     }
 
     private void updateUpdateButton() {
@@ -220,14 +236,18 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
         }
     }
 
-    private void showSettings() {
-        AppDialogPresenter dialogPresenter = AppDialogPresenter.instance(getContext());
+    /**
+     * YouTube buttons are round and as tall as the search field
+     */
+    private void setYouTubeButtonSize(SearchOrbView orb, int sizeResId, boolean fitIcon) {
+        int size = getResources().getDimensionPixelSize(sizeResId);
+        orb.findViewById(R.id.search_orb).getLayoutParams().width = size;
+        orb.findViewById(R.id.search_orb).getLayoutParams().height = size;
 
-        for (SettingsItem item : AppDataSourceManager.instance().getSettingItems(getContext())) {
-            dialogPresenter.appendSingleButton(UiOptionItem.fromIcon(item.title, item.imageResId, optionItem -> item.onClick.run()));
+        if (fitIcon) { // profile picture fills the whole circle
+            orb.findViewById(R.id.icon).getLayoutParams().width = size;
+            orb.findViewById(R.id.icon).getLayoutParams().height = size;
         }
-
-        dialogPresenter.showDialog(getContext().getString(R.string.header_settings));
     }
 
     private void init() {
@@ -255,9 +275,9 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
             mSearchPill = findViewById(R.id.search_pill);
             mSearchPill.setOnClickListener(v -> mSearchOrbView.callOnClick());
             mYouTubeLogo = findViewById(R.id.youtube_logo);
-            mSettingsView = findViewById(R.id.settings_orb);
-            mSettingsView.setOnOrbClickedListener(v -> showSettings());
-            TooltipCompatHandler.setTooltipText(mSettingsView, getContext().getString(R.string.header_settings));
+            mMicView = findViewById(R.id.mic_orb);
+            mMicView.setOnOrbClickedListener(v -> SearchPresenter.instance(getContext()).startVoice());
+            TooltipCompatHandler.setTooltipText(mMicView, getContext().getString(R.string.voice_search));
             mCastView = findViewById(R.id.cast_orb);
             mCastView.setOnOrbClickedListener(v -> RemoteControlSettingsPresenter.instance(getContext()).addDevice());
             TooltipCompatHandler.setTooltipText(mCastView, getContext().getString(R.string.dialog_add_device));
@@ -267,37 +287,50 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
             PendingAppUpdate.setOnUpdateFoundListener(this::updateUpdateButton);
 
             int white = ContextCompat.getColor(getContext(), R.color.white);
-            enableYouTubeFocus(mSettingsView, white);
-            enableYouTubeFocus(mCastView, white);
-            enableYouTubeFocus(mUpdateView, ContextCompat.getColor(getContext(), R.color.red));
+            enableYouTubeFocus(mMicView, ContextCompat.getColor(getContext(), R.color.scheme_youtube_thumbnail), white);
+            enableYouTubeFocus(mCastView, Color.TRANSPARENT, white);
+            enableYouTubeFocus(mUpdateView, Color.TRANSPARENT, ContextCompat.getColor(getContext(), R.color.red));
+            setYouTubeButtonSize(mMicView, R.dimen.youtube_title_button_size, false);
+            setYouTubeButtonSize(mCastView, R.dimen.youtube_title_button_size, false);
+            setYouTubeButtonSize(mUpdateView, R.dimen.youtube_title_button_size, false);
+            mAccountName = findViewById(R.id.account_name);
         }
 
         mAccountView = findViewById(R.id.account_orb);
-        mAccountView.setOnOrbClickedListener(v -> AccountSelectionPresenter.instance(getContext()).nextAccountOrDialog());
+        // YouTube color scheme: "Who's watching?" instead of switching to the next account
+        mAccountView.setOnOrbClickedListener(v -> {
+            if (mSearchPill != null) {
+                YouTubeAccountPicker.show(getContext());
+            } else {
+                AccountSelectionPresenter.instance(getContext()).nextAccountOrDialog();
+            }
+        });
         mAccountView.setOnOrbLongClickedListener(v -> {
             AccountSettingsPresenter.instance(getContext()).show();
             return true;
         });
         TooltipCompatHandler.setTooltipText(mAccountView, getContext().getString(R.string.settings_accounts));
         if (mSearchPill != null) {
-            // Search | ... | settings gear | profile picture (far right)
-            ViewGroup endGroup = findViewById(R.id.title_end_group);
-            ((ViewGroup) mAccountView.getParent()).removeView(mAccountView);
+            // Profile picture (above the sidebar) | mic | search | ... | update | cast | logo (far right)
+            ViewGroup startGroup = (ViewGroup) mSearchPill.getParent();
+            startGroup.removeView(mAccountView);
             LinearLayout.LayoutParams accountParams = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
             accountParams.gravity = Gravity.CENTER_VERTICAL;
-            accountParams.setMarginStart(getResources().getDimensionPixelSize(R.dimen.search_bar_right_items_margin));
-            endGroup.addView(mAccountView, accountParams);
+            accountParams.setMarginEnd(getResources().getDimensionPixelSize(R.dimen.youtube_title_avatar_margin_end));
+            startGroup.addView(mAccountView, 0, accountParams);
+            setYouTubeButtonSize(mAccountView, R.dimen.youtube_title_avatar_size, true);
 
             // Hidden buttons are skipped by focusSearch()
+            mAccountView.setNextFocusLeftId(View.NO_ID);
+            mAccountView.setNextFocusRightId(R.id.mic_orb);
+            mMicView.setNextFocusLeftId(R.id.account_orb);
+            mMicView.setNextFocusRightId(R.id.search_pill);
+            mSearchPill.setNextFocusLeftId(R.id.mic_orb);
             mSearchPill.setNextFocusRightId(R.id.update_orb);
             mUpdateView.setNextFocusLeftId(R.id.search_pill);
             mUpdateView.setNextFocusRightId(R.id.cast_orb);
             mCastView.setNextFocusLeftId(R.id.update_orb);
-            mCastView.setNextFocusRightId(R.id.settings_orb);
-            mSettingsView.setNextFocusLeftId(R.id.cast_orb);
-            mSettingsView.setNextFocusRightId(R.id.account_orb);
-            mAccountView.setNextFocusLeftId(R.id.settings_orb);
-            mAccountView.setNextFocusRightId(View.NO_ID);
+            mCastView.setNextFocusRightId(View.NO_ID);
 
             // The bar stays visible while scrolling, so the content scrolls under a solid background
             setBackgroundColor(ContextCompat.getColor(getContext(), R.color.scheme_youtube_background));

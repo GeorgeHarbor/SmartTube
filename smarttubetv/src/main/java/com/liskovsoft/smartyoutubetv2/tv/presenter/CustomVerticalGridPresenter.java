@@ -11,11 +11,19 @@ public class CustomVerticalGridPresenter extends VerticalGridPresenter {
     private final int mRootResId;
 
     public CustomVerticalGridPresenter() {
-        this(-1, -1);
+        this(ViewUtil.FOCUS_ZOOM_FACTOR);
+    }
+
+    public CustomVerticalGridPresenter(int zoomFactor) {
+        this(-1, -1, zoomFactor);
     }
 
     public CustomVerticalGridPresenter(int layoutResId, int rootResId) {
-        super(ViewUtil.FOCUS_ZOOM_FACTOR, ViewUtil.FOCUS_DIMMER_ENABLED);
+        this(layoutResId, rootResId, ViewUtil.FOCUS_ZOOM_FACTOR);
+    }
+
+    public CustomVerticalGridPresenter(int layoutResId, int rootResId, int zoomFactor) {
+        super(zoomFactor, ViewUtil.FOCUS_DIMMER_ENABLED);
 
         mLayoutResId = layoutResId;
         mRootResId = rootResId;

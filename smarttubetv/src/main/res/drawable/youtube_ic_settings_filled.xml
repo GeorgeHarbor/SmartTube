@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: sidebar icon, sized to the glyph of the official TV app -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18.2dp"
+    android:height="18.2dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="0.8"
+        android:strokeLineJoin="round"
+        android:pathData="M14,2h-4l-0.74,2.96c-0.73,0.27 -1.4,0.66 -2,1.14l-2.92,-0.83 -2,3.46 2.19,2.13c-0.06,0.37 -0.09,0.75 -0.09,1.14s0.03,0.77 0.09,1.14l-2.19,2.13 2,3.46 2.92,-0.83c0.6,0.48 1.27,0.87 2,1.14L10,22h4l0.74,-2.96c0.73,-0.27 1.4,-0.66 2,-1.14l2.92,0.83 2,-3.46 -2.19,-2.13c0.06,-0.37 0.09,-0.75 0.09,-1.14s-0.03,-0.77 -0.09,-1.14l2.19,-2.13 -2,-3.46 -2.92,0.83c-0.6,-0.48 -1.27,-0.87 -2,-1.14L14,2zM12,8.5c-1.93,0 -3.5,1.57 -3.5,3.5s1.57,3.5 3.5,3.5 3.5,-1.57 3.5,-3.5 -1.57,-3.5 -3.5,-3.5z"/>
+</vector>

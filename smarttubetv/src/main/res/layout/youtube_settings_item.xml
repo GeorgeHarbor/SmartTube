@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: Settings list item. Focused item becomes a white pill. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settings_title"
+    android:layout_width="210dp"
+    android:layout_height="39dp"
+    android:paddingStart="9dp"
+    android:paddingEnd="9dp"
+    android:gravity="center_vertical|start"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:singleLine="true"
+    android:ellipsize="end"
+    android:textSize="15.5sp"
+    android:fontFamily="sans-serif-medium"
+    android:textColor="@color/youtube_sidebar_item_text"
+    android:background="@drawable/youtube_sidebar_item" />

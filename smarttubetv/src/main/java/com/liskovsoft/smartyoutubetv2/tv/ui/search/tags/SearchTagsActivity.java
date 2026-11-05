@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import com.liskovsoft.smartyoutubetv2.tv.R;
 import com.liskovsoft.smartyoutubetv2.tv.ui.common.LeanbackActivity;
+import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
 
 public class SearchTagsActivity extends LeanbackActivity {
     private SearchTagsFragment mFragment;
@@ -20,7 +21,8 @@ public class SearchTagsActivity extends LeanbackActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // If there are no results found, press the left key to reselect the microphone
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && !mFragment.hasResults()) {
+        // YouTube color scheme: LEFT moves inside the on-screen keyboard
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && !mFragment.hasResults() && !ViewUtil.isYouTubeStyle(this)) {
             mFragment.focusOnSearchField();
         }
         return super.onKeyDown(keyCode, event);

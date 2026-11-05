@@ -119,6 +119,10 @@ public class AppDialogFragment extends LeanbackSettingsFragment implements AppDi
         fragment.setCategories(categories);
         fragment.setTitle(title);
         fragment.enableTransparent(mIsTransparent);
+        // The Settings preview already shows these options, sliding them in again looks like a flicker
+        if (ViewUtil.isYouTubePaneDialog() && getChildFragmentManager().findFragmentByTag(PREFERENCE_FRAGMENT_TAG) == null) {
+            fragment.setEnterTransition(null);
+        }
         return fragment;
     }
 
@@ -324,6 +328,9 @@ public class AppDialogFragment extends LeanbackSettingsFragment implements AppDi
                 // Enable transparency on child fragment itself (isn't attached to parent yet)
                 ViewUtil.enableTransparentDialog(getActivity(), view);
             }
+
+            ViewUtil.enableYouTubePaneDialog(getActivity(), getParentFragment().getView());
+            ViewUtil.enableYouTubePaneDialog(getActivity(), view);
 
             return view;
         }

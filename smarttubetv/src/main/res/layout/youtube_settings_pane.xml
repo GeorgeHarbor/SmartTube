@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: options of the selected Settings item, right of the list. Not focusable.
+     Mirrors the settings dialog (see ViewUtil.enableYouTubePaneDialog) that opens over it on RIGHT/OK.
+     The fragment is as wide as the screen but starts after the sidebar rail, hence the end margin. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="231dp"
+        android:layout_marginTop="96dp"
+        android:background="@color/scheme_youtube_thumbnail" />
+    <LinearLayout
+        android:id="@+id/settings_pane_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="232dp"
+        android:layout_marginEnd="@dimen/youtube_sidebar_rail_width"
+        android:layout_marginTop="@dimen/youtube_settings_pane_top"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/settings_pane_title"
+            android:translationY="-1.5dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/lb_preference_decor_title_text_height"
+            android:layout_marginTop="@dimen/lb_preference_decor_title_margin_top"
+            android:layout_marginStart="@dimen/lb_preference_decor_title_margin_start"
+            android:layout_marginEnd="@dimen/lb_preference_decor_title_margin_end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:textStyle="bold"
+            android:textSize="@dimen/lb_preference_decor_title_text_size"
+            android:textColor="@android:color/white" />
+        <LinearLayout
+            android:id="@+id/settings_pane_options"
+            android:layout_width="@dimen/youtube_settings_option_width"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+</FrameLayout>

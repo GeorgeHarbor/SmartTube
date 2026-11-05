@@ -8,6 +8,12 @@
     <attr name="cardProgressStyle" format="reference"/>
     <attr name="appLogo" format="reference"/>
     <attr name="youTubeStyle" format="boolean"/>
+    <!-- Dialog (preference) colors, overridden by the YouTube color scheme -->
+    <attr name="preferenceListBackground" format="color"/>
+    <attr name="preferenceItemBackground" format="reference"/>
+    <attr name="preferenceItemTextColor" format="reference|color"/>
+    <attr name="preferenceItemSecondaryTextColor" format="reference|color"/>
+    <attr name="preferenceItemPaddingStart" format="dimension"/>
 
     <!-- Increase spacing between items in GridView -->
     <style name="GridViewStyle" parent="Widget.Leanback.GridItems.VerticalGridView">
@@ -99,6 +105,11 @@
         <item name="android:windowFullscreen">true</item>
         <!-- Overlay bottom bar (can't hide it from styles) -->
         <item tools:targetApi="19" name="android:windowTranslucentNavigation">true</item>
+        <item name="preferenceListBackground">@color/lb_preference_decor_list_background</item>
+        <item name="preferenceItemBackground">?android:attr/selectableItemBackground</item>
+        <item name="preferenceItemTextColor">@color/lb_preference_item_primary_text_color</item>
+        <item name="preferenceItemSecondaryTextColor">@color/lb_preference_item_secondary_text_color</item>
+        <item name="preferenceItemPaddingStart">@dimen/lb_preference_item_padding_start</item>
     </style>
     <!-- Give ability to override style for different api -->
     <style name="App.Theme.Leanback.Preferences" parent="App.Theme.Leanback.Preferences.Base" />
@@ -257,30 +268,54 @@
     <!--  Color scheme: YouTube (flat cards, icon-only sidebar, no clock)  -->
     <style name="App.Theme.YouTube.Browse" parent="App.Theme.DarkGrey.Browse">
         <item name="android:windowBackground">@color/scheme_youtube_background</item>
-        <item name="brandColor">@color/scheme_youtube_sidebar</item>
+        <item name="brandColor">@color/scheme_youtube_background</item>
         <item name="shelfBackground">@color/scheme_youtube_background</item>
         <item name="cardDefaultBackground">@color/scheme_youtube_background</item>
         <item name="appLogo">@null</item>
         <item name="youTubeStyle">true</item>
-        <!-- Content starts right after the icon-only sidebar -->
-        <item name="browsePaddingStart">16dp</item>
+        <!-- Content starts right after the icon-only sidebar (cards include their 4dp focus ring) -->
+        <item name="browsePaddingStart">10dp</item>
+        <item name="browseRowsMarginTop">110dp</item>
+        <item name="rowHorizontalGridStyle">@style/YouTubeRowViewStyle</item>
+        <item name="itemsVerticalGridStyle">@style/YouTubeGridViewStyle</item>
         <item name="headersVerticalGridStyle">@style/YouTubeHeaderStyle</item>
         <item name="browseTitleViewStyle">@style/YouTubeTitleViewStyle</item>
         <item name="rowHeaderStyle">@style/YouTubeRowHeaderStyle</item>
     </style>
+    <!-- 18dp between thumbnails, minus the focus rings -->
+    <style name="YouTubeRowViewStyle" parent="RowViewStyle">
+        <item name="android:horizontalSpacing">10dp</item>
+    </style>
+    <style name="YouTubeGridViewStyle" parent="GridViewStyle">
+        <item name="android:horizontalSpacing">10dp</item>
+    </style>
     <style name="YouTubeHeaderStyle" parent="BrowseHeaderStyle">
-        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingStart">16dp</item>
         <item name="android:verticalSpacing">0dp</item>
     </style>
     <style name="YouTubeTitleViewStyle" parent="Widget.Leanback.TitleView">
-        <item name="android:paddingStart">24dp</item>
+        <!-- Centers the profile picture above the sidebar icons -->
+        <item name="android:paddingStart">25.5dp</item>
+        <item name="android:paddingTop">25dp</item>
     </style>
     <style name="YouTubeRowHeaderStyle" parent="Widget.Leanback.Row.Header">
         <item name="android:textAppearance">@style/YouTubeRowHeaderText</item>
     </style>
     <style name="YouTubeRowHeaderText" parent="TextAppearance.Leanback.Row.Header">
-        <item name="android:textSize">16sp</item>
-        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textSize">15.5sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">#F1F1F1</item>
+    </style>
+    <style name="App.Theme.YouTube.Preferences" parent="App.Theme.DarkGrey.Preferences">
+        <item name="defaultBrandColor">@color/scheme_youtube_background</item>
+        <item name="preferenceListBackground">@color/scheme_youtube_background</item>
+        <item name="preferenceItemBackground">@drawable/youtube_preference_item</item>
+        <item name="preferenceItemTextColor">@color/youtube_sidebar_item_text</item>
+        <item name="preferenceItemSecondaryTextColor">@color/youtube_preference_secondary_text</item>
+        <!-- Text sits inside the pill, clear of its rounded end -->
+        <item name="preferenceItemPaddingStart">30dp</item>
+        <!-- Unchecked boxes stay visible on the white pill -->
+        <item name="android:colorControlNormal" tools:targetApi="21">#909090</item>
     </style>
     <!--  End Color scheme: YouTube  -->
 </resources>

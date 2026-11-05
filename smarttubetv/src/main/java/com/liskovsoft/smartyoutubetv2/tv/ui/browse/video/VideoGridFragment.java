@@ -89,7 +89,7 @@ public class VideoGridFragment extends GridFragment implements VideoSection {
     }
 
     private void setupAdapter() {
-        VerticalGridPresenter presenter = new CustomVerticalGridPresenter();
+        VerticalGridPresenter presenter = new CustomVerticalGridPresenter(ViewUtil.getFocusZoomFactor(getContext()));
         presenter.setNumberOfColumns(
                 isShorts() ? GridFragmentHelper.getMaxColsNum(getContext(), R.dimen.shorts_card_width, mVideoGridScale) :
                         GridFragmentHelper.getMaxColsNum(getContext(), R.dimen.card_width, mVideoGridScale * ViewUtil.getVideoCardScale(getContext()))

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: featured video above the first row (Music section). Not focusable, follows the selected card. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+    <ImageView
+        android:id="@+id/hero_image"
+        android:layout_width="match_parent"
+        android:layout_height="420dp"
+        android:layout_marginStart="180dp"
+        android:scaleType="centerCrop"
+        android:importantForAccessibility="no" />
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="420dp"
+        android:layout_marginStart="180dp"
+        android:background="@drawable/youtube_hero_scrim" />
+    <LinearLayout
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="150dp"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/hero_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:textColor="@color/white" />
+        <TextView
+            android:id="@+id/hero_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textSize="16sp"
+            android:textColor="@color/scheme_youtube_secondary_text" />
+    </LinearLayout>
+</FrameLayout>

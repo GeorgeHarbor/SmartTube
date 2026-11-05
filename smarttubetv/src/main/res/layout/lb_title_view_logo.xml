@@ -88,17 +88,14 @@
         app:searchOrbBrightColor="@color/orb_bright_color"
         app:searchOrbIconColor="@color/orb_icon_color"
         android:visibility="gone" />
-    <!-- YouTube color scheme: opens settings (replaces the Settings section of the sidebar) -->
-    <androidx.leanback.widget.SearchOrbView
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/settings_orb"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <!-- YouTube color scheme: logo at the far right -->
+    <ImageView
+        android:id="@+id/youtube_logo"
+        android:layout_width="105dp"
+        android:layout_height="22dp"
         android:layout_gravity="center_vertical"
-        android:layout_marginStart="@dimen/search_bar_right_items_margin"
-        app:searchOrbIcon="@drawable/youtube_settings_gear"
-        app:searchOrbColor="@android:color/transparent"
-        app:searchOrbBrightColor="@color/orb_bright_color"
-        app:searchOrbIconColor="@color/orb_icon_color"
+        android:layout_marginStart="32dp"
+        android:src="@drawable/youtube_premium_logo"
+        android:contentDescription="@string/youtube_logo_text"
         android:visibility="gone" />
 </LinearLayout>

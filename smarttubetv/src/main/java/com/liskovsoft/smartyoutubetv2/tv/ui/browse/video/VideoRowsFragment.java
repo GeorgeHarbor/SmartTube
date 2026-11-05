@@ -21,6 +21,12 @@ public class VideoRowsFragment extends MultipleRowsFragment {
     }
 
     @Override
+    protected boolean isHeroEnabled() {
+        // Like YouTube TV: only the Music section has a featured video
+        return BrowsePresenter.instance(getContext()).isMusicSection();
+    }
+
+    @Override
     public void setExpand(boolean expand) {
         // force expand by default
         super.setExpand(true);

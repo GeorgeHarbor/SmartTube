@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: focus ring of the account picker avatars -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="oval">
+            <stroke android:width="4dp" android:color="#F1F1F1"/>
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent"/>
+</selector>

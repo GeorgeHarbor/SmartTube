@@ -37,6 +37,14 @@ public class AppDialogPresenter extends BasePresenter<AppDialogView> {
     private boolean mBackupIsTransparent;
     private boolean mBackupIsOverlay;
     private boolean mBackupIsExpandable;
+    private DialogPreview mPreview;
+
+    public interface DialogPreview {
+        /**
+         * @return true if the dialog is shown in the preview, false to open it as usual
+         */
+        boolean onPreview(CharSequence title, List<OptionCategory> categories);
+    }
 
     public AppDialogPresenter(Context context) {
         super(context);
@@ -121,7 +129,19 @@ public class AppDialogPresenter extends BasePresenter<AppDialogView> {
         showDialog(null, onFinish);
     }
 
+    /**
+     * Lets a screen show dialog options in place (YouTube color scheme Settings). Pass null to remove.
+     */
+    public void setDialogPreview(DialogPreview preview) {
+        mPreview = preview;
+    }
+
     public void showDialog(CharSequence dialogTitle, Runnable onFinish) {
+        if (mPreview != null && mPreview.onPreview(dialogTitle, mCategories)) {
+            resetData(); // nothing is opened, onFinish isn't needed
+            return;
+        }
+
         mTitle = dialogTitle;
         mOnFinish.add(onFinish);
         

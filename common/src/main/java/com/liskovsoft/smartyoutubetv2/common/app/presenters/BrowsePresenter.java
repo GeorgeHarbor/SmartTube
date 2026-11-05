@@ -64,7 +64,7 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
     private static final String TAG = BrowsePresenter.class.getSimpleName();
     private static final Set<Integer> YOUTUBE_SIDEBAR_SECTIONS = new HashSet<>(Arrays.asList(
             MediaGroup.TYPE_HOME, MediaGroup.TYPE_SHORTS, MediaGroup.TYPE_MUSIC,
-            MediaGroup.TYPE_SUBSCRIPTIONS, MediaGroup.TYPE_USER_PLAYLISTS, MediaGroup.TYPE_HISTORY));
+            MediaGroup.TYPE_SUBSCRIPTIONS, MediaGroup.TYPE_USER_PLAYLISTS, MediaGroup.TYPE_HISTORY, MediaGroup.TYPE_SETTINGS));
     @SuppressLint("StaticFieldLeak")
     private static BrowsePresenter sInstance;
     private static boolean sIsPlaybackWarmedUp;
@@ -989,7 +989,7 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
     }
 
     private boolean isShownInSidebar(BrowseSection section) {
-        // YouTube color scheme: short sidebar, Settings opens from the gear in the title bar
+        // YouTube color scheme: short sidebar like YouTube TV, Settings at the bottom
         return section.isEnabled() && (!MainUIData.instance(getContext()).isYouTubeColorScheme() || YOUTUBE_SIDEBAR_SECTIONS.contains(section.getId()));
     }
 
@@ -1131,6 +1131,10 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
 
     private boolean isPinnedId(int id) {
         return id > 100;
+    }
+
+    public boolean isMusicSection() {
+        return isSection(MediaGroup.TYPE_MUSIC);
     }
 
     private boolean isSection(int sectionId) {

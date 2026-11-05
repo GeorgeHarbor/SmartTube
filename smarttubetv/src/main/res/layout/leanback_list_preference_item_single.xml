@@ -19,12 +19,12 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?android:attr/selectableItemBackground"
+    android:background="?attr/preferenceItemBackground"
     android:clickable="true"
     android:focusable="true"
     android:descendantFocusability="blocksDescendants"
     android:orientation="horizontal"
-    android:paddingStart="@dimen/lb_preference_item_padding_start"
+    android:paddingStart="?attr/preferenceItemPaddingStart"
     android:paddingEnd="@dimen/lb_preference_item_padding_end" >
 
     <!-- MOD: use negative align because a radio is image drawable -->
@@ -40,6 +40,7 @@
         android:layout_gravity="center_vertical" />
 
     <LinearLayout android:layout_width="wrap_content"
+        android:duplicateParentState="true"
         android:layout_height="wrap_content"
         android:orientation="vertical">
         <Space android:layout_width="0dp" android:layout_height="@dimen/lb_preference_item_text_space_top" />
@@ -49,7 +50,8 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/lb_preference_item_primary_text_margin_bottom"
             android:fontFamily="sans-serif"
-            android:textColor="@color/lb_preference_item_primary_text_color"
+            android:duplicateParentState="true"
+            android:textColor="?attr/preferenceItemTextColor"
             android:textSize="@dimen/lb_preference_item_primary_text_size"/>
         <Space android:layout_width="0dp" android:layout_height="@dimen/lb_preference_item_text_space_bottom" />
     </LinearLayout>

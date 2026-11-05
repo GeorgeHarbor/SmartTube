@@ -9,6 +9,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Build.VERSION;
 import android.util.Pair;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -48,6 +49,8 @@ public class VideoCardPresenter extends LongClickPresenter {
     private int mThumbQuality;
     private int mWidth;
     private int mHeight;
+    private int mLoadWidth;
+    private int mLoadHeight;
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent) {
@@ -83,8 +86,8 @@ public class VideoCardPresenter extends LongClickPresenter {
             }
         };
 
-        cardView.setTitleLinesNum(isCardMultilineTitleEnabled ? 2 : 1);
-        cardView.setContentLinesNum(isCardMultilineSubtitleEnabled ? 2 : 1);
+        cardView.setTitleLinesNum(isCardMultilineTitleEnabled || mIsYouTubeStyle ? 2 : 1);
+        cardView.setContentLinesNum(isCardMultilineSubtitleEnabled || mIsYouTubeStyle ? 2 : 1);
         cardView.enableTextAutoScroll(isCardTextAutoScrollEnabled);
         cardView.setTextScrollSpeed(cardTextScrollSpeed);
         cardView.setFocusable(true);
@@ -104,7 +107,7 @@ public class VideoCardPresenter extends LongClickPresenter {
     }
 
     /**
-     * Rounded thumbnail with a white outline on focus. Text sits on the shelf background.
+     * Rounded thumbnail with a white outline around it on focus. Text sits on the shelf background.
      */
     private static void applyYouTubeThumbnail(ComplexImageCardView cardView) {
         View thumbnail = cardView.findViewById(R.id.main_image_wrapper);
@@ -114,16 +117,41 @@ public class VideoCardPresenter extends LongClickPresenter {
         }
 
         Context context = cardView.getContext();
+        Resources res = context.getResources();
+        int ring = res.getDimensionPixelSize(R.dimen.youtube_card_focus_width);
 
         TextView titleText = cardView.findViewById(R.id.title_text);
         if (titleText != null) {
-            titleText.setTypeface(titleText.getTypeface(), Typeface.BOLD);
+            titleText.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            titleText.setTextSize(TypedValue.COMPLEX_UNIT_PX, res.getDimension(R.dimen.youtube_card_title_text_size));
+            titleText.setLineSpacing(res.getDimension(R.dimen.youtube_card_title_line_spacing), 1);
+            titleText.setMinLines(1); // up to 2 lines, short titles don't leave a gap
         }
 
-        thumbnail.setBackground(ContextCompat.getDrawable(context, R.drawable.youtube_card_thumbnail));
+        TextView contentText = cardView.findViewById(R.id.content_text);
+        if (contentText != null) {
+            contentText.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+            contentText.setTextSize(TypedValue.COMPLEX_UNIT_PX, res.getDimension(R.dimen.youtube_card_content_text_size));
+            contentText.setLineSpacing(res.getDimension(R.dimen.youtube_card_content_line_spacing), 1);
+            ((ViewGroup.MarginLayoutParams) contentText.getLayoutParams()).topMargin = res.getDimensionPixelSize(R.dimen.youtube_card_content_margin_top);
+        }
+
+        View infoField = cardView.findViewById(R.id.info_field);
+        if (infoField != null) { // text starts at the thumbnail edge, inside the focus ring area
+            infoField.setPaddingRelative(ring, res.getDimensionPixelSize(R.dimen.youtube_card_info_padding_top), ring, infoField.getPaddingBottom());
+        }
+
+        // The ring is drawn in the padding, so it surrounds the picture instead of covering it
+        thumbnail.setPadding(ring, ring, ring, ring);
 
         if (VERSION.SDK_INT >= 21) {
-            thumbnail.setClipToOutline(true); // outline comes from the rounded background
+            for (int id : new int[] {R.id.main_image, R.id.preview_container}) {
+                View picture = thumbnail.findViewById(id);
+                if (picture != null) {
+                    picture.setBackground(ContextCompat.getDrawable(context, R.drawable.youtube_card_thumbnail));
+                    picture.setClipToOutline(true); // outline comes from the rounded background
+                }
+            }
         }
 
         if (VERSION.SDK_INT >= 23) {
@@ -133,7 +161,9 @@ public class VideoCardPresenter extends LongClickPresenter {
 
     private void updateCardBackgroundColor(ComplexImageCardView view, boolean selected) {
         int backgroundColor = mIsYouTubeStyle ? Color.TRANSPARENT : selected ? mSelectedBackgroundColor : mDefaultBackgroundColor;
-        int textColor = selected && !mIsYouTubeStyle ? mSelectedTextColor : mDefaultTextColor;
+        // YouTube dims the titles of unfocused cards
+        int textColor = mIsYouTubeStyle ? (selected ? mDefaultTextColor : mYouTubeContentTextColor) :
+                selected ? mSelectedTextColor : mDefaultTextColor;
 
         // Both background colors should be set because the view's
         // background is temporarily visible during animations.
@@ -165,7 +195,9 @@ public class VideoCardPresenter extends LongClickPresenter {
         Context context = cardView.getContext();
 
         cardView.setTitleText(video.getTitle());
-        cardView.setContentText(video.getSecondTitle());
+        cardView.setContentText(mIsYouTubeStyle && video.getSecondTitle() != null ?
+                // Like YouTube: channel on the first line, views and date on the second
+                video.getSecondTitle().toString().replaceFirst(" " + Video.TERTIARY_TEXT_DELIM + " ", "\n") : video.getSecondTitle());
         // Count progress that very close to zero. E.g. when user closed video immediately.
         cardView.setProgress(video.percentWatched > 0 && video.percentWatched < 1 ? 1 : Math.round(video.percentWatched));
         cardView.setBadgeText(
@@ -195,7 +227,7 @@ public class VideoCardPresenter extends LongClickPresenter {
                 //.placeholder(mDefaultCardImage)
                 .apply(ViewUtil.glideOptions())
                 // improve image compression on low end devices
-                .override(mWidth, mHeight)
+                .override(mLoadWidth, mLoadHeight)
                 // com.liskovsoft.smartyoutubetv2.tv.util.CacheGlideModule
                 // Cache makes app crashing on old android versions
                 .diskCacheStrategy(VERSION.SDK_INT > 21 ? DiskCacheStrategy.ALL : DiskCacheStrategy.NONE)
@@ -231,6 +263,10 @@ public class VideoCardPresenter extends LongClickPresenter {
 
         mWidth = dimens.first;
         mHeight = dimens.second;
+        // YouTube color scheme: cards of the selected row grow, so load pictures for the big size
+        float loadScale = mIsYouTubeStyle ? ViewUtil.YOUTUBE_SELECTED_ROW_CARD_SCALE : 1;
+        mLoadWidth = (int) (mWidth * loadScale);
+        mLoadHeight = (int) (mHeight * loadScale);
     }
     
     protected Pair<Integer, Integer> getCardDimensPx(Context context) {
@@ -240,7 +276,8 @@ public class VideoCardPresenter extends LongClickPresenter {
             // Keep the exact size so rows show a partial card at the end, like YouTube (don't stretch to whole columns)
             Resources res = context.getResources();
             scale *= ViewUtil.getVideoCardScale(context);
-            return new Pair<>((int) (res.getDimensionPixelSize(R.dimen.card_width) * scale), (int) (res.getDimensionPixelSize(R.dimen.card_height) * scale));
+            int width = (int) (res.getDimensionPixelSize(R.dimen.card_width) * scale);
+            return new Pair<>(width, width * 9 / 16); // 16:9 thumbnails
         }
 
         return GridFragmentHelper.getCardDimensPx(context, R.dimen.card_width, R.dimen.card_height, scale);

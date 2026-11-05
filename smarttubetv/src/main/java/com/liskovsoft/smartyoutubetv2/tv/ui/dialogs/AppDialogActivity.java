@@ -1,5 +1,7 @@
 package com.liskovsoft.smartyoutubetv2.tv.ui.dialogs;
 
+import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
+
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.os.Build.VERSION;
@@ -115,6 +117,8 @@ public class AppDialogActivity extends MotherActivity {
 
             mFragment.onFinish();
         }
+
+        ViewUtil.setYouTubePaneDialog(false);
 
         // Destroy dialog when BACK is pressed. NoHistory isn't reliable if combined with singleInstance
         finishReally();

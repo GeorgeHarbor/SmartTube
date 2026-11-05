@@ -1,20 +1,36 @@
 package com.liskovsoft.smartyoutubetv2.tv.ui.browse.video;
 
+import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Pair;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.leanback.app.BrowseSupportFragment;
 import androidx.leanback.app.RowsSupportFragment;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.ClassPresenterSelector;
 import androidx.leanback.widget.HeaderItem;
 import androidx.leanback.widget.ListRow;
 import androidx.leanback.widget.ListRowPresenter;
+import androidx.leanback.widget.ObjectAdapter;
 import androidx.leanback.widget.OnItemViewSelectedListener;
 import androidx.leanback.widget.Presenter;
 import androidx.leanback.widget.Row;
 import androidx.leanback.widget.RowPresenter;
 import androidx.leanback.widget.RowPresenter.ViewHolder;
+import androidx.leanback.widget.VerticalGridView;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
 
 import com.liskovsoft.sharedutils.helpers.Helpers;
 import com.liskovsoft.sharedutils.mylogger.Log;
@@ -22,6 +38,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.VideoGroup;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.interfaces.VideoGroupPresenter;
 import com.liskovsoft.smartyoutubetv2.common.prefs.MainUIData;
+import com.liskovsoft.smartyoutubetv2.tv.R;
 import com.liskovsoft.smartyoutubetv2.tv.adapter.VideoGroupObjectAdapter;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelHeaderPresenter;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelHeaderPresenter.ChannelHeaderCallback;
@@ -44,7 +61,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
     private static final String TAG = MultipleRowsFragment.class.getSimpleName();
     private UriBackgroundManager mBackgroundManager;
     private ArrayObjectAdapter mRowsAdapter;
-    private ListRowPresenter mRowPresenter;
+    private CustomListRowPresenter mRowPresenter;
     private Map<Integer, VideoGroupObjectAdapter> mVideoGroupAdapters;
     private final List<VideoGroup> mPendingUpdates = new ArrayList<>();
     private VideoGroupPresenter mMainPresenter;
@@ -52,6 +69,11 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
     private ShortsCardPresenter mShortsPresenter;
     private int mSelectedRowIndex = -1;
     private ChannelHeaderCallback mChannelHeaderCallback;
+    private VideoCardPresenter mHeroCardPresenter;
+    private ListRow mHeroRow;
+    private View mHero;
+    private boolean mHeroShown;
+    private int mDefaultAlignTop;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -60,11 +82,54 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         mMainPresenter = getMainPresenter();
         mCardPresenter = new VideoCardPresenter();
         mShortsPresenter = new ShortsCardPresenter();
+        mHeroCardPresenter = new HeroCardPresenter();
         mBackgroundManager = ((LeanbackActivity) getActivity()).getBackgroundManager();
 
         setupAdapter();
         setupEventListeners();
         applyPendingUpdates();
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View rows = super.onCreateView(inflater, container, savedInstanceState);
+
+        if (!ViewUtil.isYouTubeStyle(getContext())) {
+            return rows;
+        }
+
+        // The featured video is drawn behind the rows
+        FrameLayout root = new FrameLayout(inflater.getContext());
+        root.setLayoutParams(rows.getLayoutParams());
+        mHero = inflater.inflate(R.layout.youtube_hero, root, false);
+        mHeroShown = false;
+        root.addView(mHero);
+        root.addView(rows, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        return root;
+    }
+
+    @Override
+    public void onDestroyView() {
+        updateHero(null);
+        mHero = null;
+        super.onDestroyView();
+    }
+
+    @Override
+    public void setAlignment(int windowAlignOffsetFromTop) {
+        super.setAlignment(windowAlignOffsetFromTop);
+
+        if (mHeroShown && getVerticalGridView() != null) { // keep the featured row low
+            mDefaultAlignTop = getVerticalGridView().getWindowAlignmentOffset();
+            getVerticalGridView().setWindowAlignmentOffset(getHeroAlignTop());
+        }
+    }
+
+    /**
+     * YouTube color scheme: the first row is featured, the selected card is shown big above it
+     */
+    protected boolean isHeroEnabled() {
+        return false;
     }
 
     protected void addHeader(ChannelHeaderCallback callback) {
@@ -90,11 +155,24 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         }
 
         if (mRowsAdapter == null) {
-            mRowPresenter = new CustomListRowPresenter();
+            mRowPresenter = new CustomListRowPresenter(ViewUtil.getFocusZoomFactor(getContext()));
             mRowPresenter.enableChildRoundedCorners(getMainUIData().isUiTweakEnabled(MainUIData.UI_TWEAK_ROUNDED_CORNERS));
             mRowPresenter.setShadowEnabled(!ViewUtil.isYouTubeStyle(getContext()));
 
             ClassPresenterSelector presenterSelector = new ClassPresenterSelector();
+
+            if (ViewUtil.isYouTubeStyle(getContext())) {
+                // The featured row keeps its small cards, it isn't enlarged when selected
+                CustomListRowPresenter heroRowPresenter = new CustomListRowPresenter(ViewUtil.getFocusZoomFactor(getContext()));
+                heroRowPresenter.setShadowEnabled(false);
+                presenterSelector.addClassPresenter(HeroRow.class, heroRowPresenter);
+                mRowPresenter.setSelectedRowCardScale(ViewUtil.YOUTUBE_SELECTED_ROW_CARD_SCALE);
+                int top = getResources().getDimensionPixelSize(R.dimen.youtube_row_padding_top);
+                int bottom = getResources().getDimensionPixelSize(R.dimen.youtube_row_padding_bottom);
+                mRowPresenter.setExpandedRowPadding(top, bottom);
+                heroRowPresenter.setExpandedRowPadding(top, bottom);
+            }
+
             presenterSelector.addClassPresenter(ListRow.class, mRowPresenter);
             presenterSelector.addClassPresenter(ChannelHeaderCallback.class, new ChannelHeaderPresenter());
 
@@ -108,10 +186,14 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         setOnItemViewSelectedListener(new ItemViewSelectedListener());
         mCardPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
         mShortsPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
+        mHeroCardPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
     }
 
     @Override
     public void clear() {
+        mHeroRow = null;
+        updateHero(null);
+
         if (mRowsAdapter != null) {
             mRowsAdapter.clear();
             if (mChannelHeaderCallback != null) {
@@ -251,14 +333,21 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         VideoGroupObjectAdapter existingAdapter = GridFragmentHelper.findRelatedAdapter(mVideoGroupAdapters, group, this::freeze);
 
         if (existingAdapter == null) {
-            HeaderItem rowHeader = new HeaderItem(group.getTitle());
+            boolean isHeroRow = mHero != null && mRowsAdapter.size() == 0 && !group.isShorts() && isHeroEnabled();
+            // The featured row has no title, like YouTube
+            HeaderItem rowHeader = new HeaderItem(isHeroRow ? "" : group.getTitle());
             int videoGroupId = group.getId(); // Create unique int from category.
 
-            VideoGroupObjectAdapter videoGroupAdapter = new VideoGroupObjectAdapter(group, group.isShorts() ? mShortsPresenter : mCardPresenter);
+            VideoGroupObjectAdapter videoGroupAdapter = new VideoGroupObjectAdapter(group,
+                    group.isShorts() ? mShortsPresenter : isHeroRow ? mHeroCardPresenter : mCardPresenter);
 
             mVideoGroupAdapters.put(videoGroupId, videoGroupAdapter);
 
-            ListRow row = new ListRow(rowHeader, videoGroupAdapter);
+            ListRow row = isHeroRow ? new HeroRow(rowHeader, videoGroupAdapter) : new ListRow(rowHeader, videoGroupAdapter);
+
+            if (isHeroRow) {
+                mHeroRow = row;
+            }
 
             if (group.getPosition() == -1 || group.getPosition() > mRowsAdapter.size()) {
                 mRowsAdapter.add(row);
@@ -321,6 +410,76 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         }
     }
 
+    private void updateHero(Video video) {
+        if (mHero == null || getVerticalGridView() == null) {
+            return;
+        }
+
+        if (video != null) {
+            ((TextView) mHero.findViewById(R.id.hero_title)).setText(video.getTitle());
+            ((TextView) mHero.findViewById(R.id.hero_subtitle)).setText(video.getSecondTitle());
+            Glide.with(mHero.getContext())
+                    .load(video.bgImageUrl != null ? video.bgImageUrl : video.cardImageUrl)
+                    .apply(ViewUtil.glideOptions())
+                    .into((ImageView) mHero.findViewById(R.id.hero_image));
+        }
+
+        boolean show = video != null;
+
+        if (show == mHeroShown) {
+            return;
+        }
+
+        mHeroShown = show;
+        mHero.setVisibility(show ? View.VISIBLE : View.GONE);
+
+        VerticalGridView grid = getVerticalGridView();
+        if (show) {
+            mDefaultAlignTop = grid.getWindowAlignmentOffset();
+        }
+        grid.setWindowAlignmentOffset(show ? getHeroAlignTop() : mDefaultAlignTop);
+
+        // The picture of the featured video continues under the title bar
+        Fragment parent = getParentFragment();
+        View titleView = parent instanceof BrowseSupportFragment ? ((BrowseSupportFragment) parent).getTitleView() : null;
+        if (titleView != null) {
+            titleView.setBackgroundColor(show ? Color.TRANSPARENT : ContextCompat.getColor(mHero.getContext(), R.color.scheme_youtube_background));
+        }
+    }
+
+    private int getHeroAlignTop() {
+        return mDefaultAlignTop + getResources().getDimensionPixelSize(R.dimen.youtube_hero_row_shift);
+    }
+
+    private static class HeroRow extends ListRow {
+        HeroRow(HeaderItem header, ObjectAdapter adapter) {
+            super(header, adapter);
+        }
+    }
+
+    /**
+     * Small thumbnails without text, their details are shown in the featured area above the row
+     */
+    private static class HeroCardPresenter extends VideoCardPresenter {
+        private static final float SCALE = 0.55f;
+
+        @Override
+        protected Pair<Integer, Integer> getCardDimensPx(Context context) {
+            Pair<Integer, Integer> size = super.getCardDimensPx(context);
+            return new Pair<>((int) (size.first * SCALE), (int) (size.second * SCALE));
+        }
+
+        @Override
+        protected boolean isTitleEnabled() {
+            return false;
+        }
+
+        @Override
+        protected boolean isContentEnabled() {
+            return false;
+        }
+    }
+
     private MainUIData getMainUIData() {
         return MainUIData.instance(getContext());
     }
@@ -355,6 +514,8 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         public void onItemSelected(Presenter.ViewHolder itemViewHolder, Object item,
                                    RowPresenter.ViewHolder rowViewHolder, Row row) {
             if (item instanceof Video) {
+                updateHero(row == mHeroRow ? (Video) item : null);
+
                 mBackgroundManager.setBackgroundFrom((Video) item);
 
                 mMainPresenter.onVideoItemSelected((Video) item);

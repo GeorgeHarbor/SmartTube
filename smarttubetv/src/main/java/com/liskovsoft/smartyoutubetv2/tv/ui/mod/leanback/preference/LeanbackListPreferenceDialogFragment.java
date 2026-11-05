@@ -16,6 +16,8 @@
 
 package com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.preference;
 
+import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.Uri;
@@ -161,6 +163,7 @@ public class LeanbackListPreferenceDialogFragment extends LeanbackPreferenceDial
         verticalGridView.setFocusScrollStrategy(VerticalGridView.FOCUS_SCROLL_ALIGNED);
         verticalGridView.setAdapter(onCreateAdapter());
         verticalGridView.requestFocus();
+        ViewUtil.enableYouTubePaneDialog(getActivity(), view);
 
         final CharSequence title = mDialogTitle;
         if (!TextUtils.isEmpty(title)) {

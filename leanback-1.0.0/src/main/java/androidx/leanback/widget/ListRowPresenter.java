@@ -327,6 +327,9 @@ public class ListRowPresenter extends RowPresenter {
     private static int sSelectedRowTopPadding;
     private static int sExpandedSelectedRowTopPadding;
     private static int sExpandedRowNoHovercardBottomPadding;
+    // MOD: custom paddings of the expanded row (-1 = default)
+    private int mExpandedRowTopPadding = -1;
+    private int mExpandedRowBottomPadding = -1;
 
     /**
      * Constructs a ListRowPresenter with defaults.
@@ -435,6 +438,14 @@ public class ListRowPresenter extends RowPresenter {
      * Sets the numbers of rows for rendering the list of items. By default, it is
      * set to 1.
      */
+    /**
+     * MOD: overrides the paddings around the cards of an expanded row (-1 = default)
+     */
+    public void setExpandedRowPadding(int top, int bottom) {
+        mExpandedRowTopPadding = top;
+        mExpandedRowBottomPadding = bottom;
+    }
+
     public void setNumRows(int numRows) {
         this.mNumRows = numRows;
     }
@@ -578,11 +589,11 @@ public class ListRowPresenter extends RowPresenter {
             int headerSpaceUnderBaseline = getSpaceUnderBaseline(vh);
             if (DEBUG) Log.v(TAG, "headerSpaceUnderBaseline " + headerSpaceUnderBaseline);
             // MOD: fix different row padding when the row is unselected (channel fragment with search header)
-            paddingTop = sExpandedSelectedRowTopPadding - headerSpaceUnderBaseline;
+            paddingTop = (mExpandedRowTopPadding >= 0 ? mExpandedRowTopPadding : sExpandedSelectedRowTopPadding) - headerSpaceUnderBaseline;
             //paddingTop = (vh.isSelected() ? sExpandedSelectedRowTopPadding : vh.mPaddingTop)
             //        - headerSpaceUnderBaseline;
             paddingBottom = mHoverCardPresenterSelector == null
-                    ? sExpandedRowNoHovercardBottomPadding : vh.mPaddingBottom;
+                    ? (mExpandedRowBottomPadding >= 0 ? mExpandedRowBottomPadding : sExpandedRowNoHovercardBottomPadding) : vh.mPaddingBottom;
         } else if (vh.isSelected()) {
             paddingTop = sSelectedRowTopPadding - vh.mPaddingBottom;
             paddingBottom = sSelectedRowTopPadding;

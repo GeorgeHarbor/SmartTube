@@ -156,6 +156,13 @@
                   android:screenOrientation="unspecified"
                   android:theme="@style/App.Theme.Leanback.Preferences"/>
 
+        <activity android:name="com.liskovsoft.smartyoutubetv2.tv.ui.widgets.browse.YouTubeAccountPickerActivity"
+                  android:noHistory="true"
+                  android:excludeFromRecents="true"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection"
+                  android:screenOrientation="unspecified"
+                  android:theme="@style/App.Theme.Leanback.Preferences"/>
+
         <!-- Android 8 fallback -->
         <activity android:name="com.liskovsoft.smartyoutubetv2.tv.ui.dialogs.AppDialogActivityOpaque"
             android:noHistory="true"

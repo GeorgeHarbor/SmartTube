@@ -728,6 +728,10 @@ public class BrowseSupportFragment extends BaseSupportFragment {
     private int mHeadersRailWidth;
     // MOD: keep the title bar visible while scrolling the content
     private boolean mTitleSticky;
+    // MOD: margin of the content while the sidebar is open. 0 means the sidebar overlays the content.
+    private int mHeadersPushWidth;
+    // MOD: top padding of the sidebar items. 0 means aligned with the first row.
+    private int mHeadersPaddingTop;
     private int mContainerListAlignTop;
     private boolean mMainFragmentScaleEnabled = true;
     OnItemViewSelectedListener mExternalOnItemViewSelectedListener;
@@ -1480,6 +1484,20 @@ public class BrowseSupportFragment extends BaseSupportFragment {
     }
 
     /**
+     * MOD: with the icon-only sidebar, the open sidebar pushes the content to the given margin instead of covering it.
+     */
+    public void setHeadersPushWidth(int width) {
+        mHeadersPushWidth = width;
+    }
+
+    /**
+     * MOD: where the sidebar items start, independent from the rows.
+     */
+    public void setHeadersPaddingTop(int paddingTop) {
+        mHeadersPaddingTop = paddingTop;
+    }
+
+    /**
      * MOD: keep the title bar visible at all times.
      */
     public void setTitleSticky(boolean sticky) {
@@ -1495,8 +1513,9 @@ public class BrowseSupportFragment extends BaseSupportFragment {
 
     private void expandMainFragment(boolean expand) {
         MarginLayoutParams params = (MarginLayoutParams) mScaleFrameLayout.getLayoutParams();
-        // MOD: with the icon-only sidebar, the opened sidebar overlays the content instead of pushing it
-        params.setMarginStart(mHeadersRailWidth > 0 ? mHeadersRailWidth : !expand ? mContainerListMarginStart : 0);
+        // MOD: with the icon-only sidebar, the opened sidebar overlays the content or pushes it (setHeadersPushWidth)
+        params.setMarginStart(mHeadersRailWidth > 0 ? (!expand && mHeadersPushWidth > 0 ? mHeadersPushWidth : mHeadersRailWidth) :
+                !expand ? mContainerListMarginStart : 0);
         mScaleFrameLayout.setLayoutParams(params);
         mMainFragmentAdapter.setExpand(expand);
 
@@ -1701,7 +1720,8 @@ public class BrowseSupportFragment extends BaseSupportFragment {
             // MOD: the sidebar doesn't scroll (items would slide under the sticky title), it starts below the title
             VerticalGridView headers = mHeadersSupportFragment.getVerticalGridView();
             headers.setWindowAlignment(VerticalGridView.WINDOW_ALIGN_BOTH_EDGE);
-            headers.setPadding(headers.getPaddingLeft(), mContainerListAlignTop, headers.getPaddingRight(), headers.getPaddingBottom());
+            headers.setPadding(headers.getPaddingLeft(), mHeadersPaddingTop > 0 ? mHeadersPaddingTop : mContainerListAlignTop,
+                    headers.getPaddingRight(), headers.getPaddingBottom());
             headers.setClipToPadding(false); // the zoomed focused item reaches into the top padding
         }
         setMainFragmentAlignment();

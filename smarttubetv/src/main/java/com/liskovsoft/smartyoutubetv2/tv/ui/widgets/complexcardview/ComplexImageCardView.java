@@ -17,6 +17,9 @@ public class ComplexImageCardView extends ImageCardView {
     private Handler mHandler;
     private boolean mIsCardTextAutoScrollEnabled;
     private boolean mIsBadgeEnabled;
+    private int mMainImageWidth;
+    private int mMainImageHeight;
+    private float mMainImageScale = 1;
 
     public ComplexImageCardView(Context context) {
         super(context);
@@ -198,6 +201,26 @@ public class ComplexImageCardView extends ImageCardView {
      */
     @Override
     public void setMainImageDimensions(int width, int height) {
+        mMainImageWidth = width;
+        mMainImageHeight = height;
+        applyMainImageDimensions();
+    }
+
+    /**
+     * YouTube color scheme: cards of the selected row are bigger
+     */
+    public void setMainImageScale(float scale) {
+        if (scale == mMainImageScale) {
+            return;
+        }
+
+        mMainImageScale = scale;
+        applyMainImageDimensions();
+    }
+
+    private void applyMainImageDimensions() {
+        int width = (int) (mMainImageWidth * mMainImageScale);
+        int height = (int) (mMainImageHeight * mMainImageScale);
         super.setMainImageDimensions(width, height);
         mComplexImageView.setMainImageDimensions(width, height);
     }

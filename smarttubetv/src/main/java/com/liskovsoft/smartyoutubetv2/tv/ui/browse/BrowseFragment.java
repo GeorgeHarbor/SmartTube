@@ -40,6 +40,7 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.browse.dialog.ErrorDialogFragment;
 import com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.headers.ExtendedHeadersSupportFragment;
 import com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.misc.ProgressBarManager;
 import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.BrandedLoadingView;
+import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.browse.NavigateTitleView;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -179,6 +180,16 @@ public class BrowseFragment extends BrowseSupportFragment implements BrowseView 
         return 0;
     }
 
+    private void onYouTubeSidebarExpanded(boolean expanded) {
+        if (getTitleView() instanceof NavigateTitleView) {
+            ((NavigateTitleView) getTitleView()).setSidebarExpanded(expanded);
+        }
+
+        if (getHeadersSupportFragment() != null && getHeadersSupportFragment().getVerticalGridView() != null) {
+            IconHeaderItemPresenter.applyYouTubeSidebarState(getHeadersSupportFragment().getVerticalGridView(), expanded);
+        }
+    }
+
     private void setupAdapter() {
         // Map category results from the database to ListRow objects.
         // This Adapter is used to render the MainFragment sidebar labels.
@@ -196,7 +207,20 @@ public class BrowseFragment extends BrowseSupportFragment implements BrowseView 
 
         if (ViewUtil.isYouTubeStyle(getContext())) {
             setHeadersRailWidth(getResources().getDimensionPixelSize(R.dimen.youtube_sidebar_rail_width));
+            setHeadersPushWidth(getResources().getDimensionPixelSize(R.dimen.youtube_sidebar_expanded_width));
+            setHeadersPaddingTop(getResources().getDimensionPixelSize(R.dimen.youtube_sidebar_top));
             setTitleSticky(true);
+            setBrowseTransitionListener(new BrowseTransitionListener() {
+                @Override
+                public void onHeadersTransitionStart(boolean withHeaders) {
+                    onYouTubeSidebarExpanded(withHeaders);
+                }
+
+                @Override
+                public void onHeadersTransitionStop(boolean withHeaders) {
+                    onYouTubeSidebarExpanded(withHeaders); // header views may be rebound during the transition
+                }
+            });
         }
 
         int brandColorRes = Helpers.getThemeAttr(getContext(), R.attr.brandColor);

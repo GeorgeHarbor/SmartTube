@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: search suggestion. Focused item becomes a white pill. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape>
+            <solid android:color="#F1F1F1"/>
+            <corners android:radius="14dp"/>
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent"/>
+</selector>
