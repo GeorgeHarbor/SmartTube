@@ -115,7 +115,9 @@ public class Utils {
             "org.smarttube.beta",
             "org.smarttube.stable",
             "app.smarttube.fdroid",
-            "com.georgeharbor.youtube", // fork
+            "io.github.uroge.smarttube.beta",
+            "io.github.uroge.smarttube.stable",
+            "io.github.uroge.smarttube.fdroid",
     };
     public static final String[] BACKUP_PREFS = {
             "yt_service_prefs.xml",
@@ -128,14 +130,12 @@ public class Utils {
             "yt_service_prefs",
             "global_prefs"
     };
-    private static final String SUPER_PASSWD = "smarttube";
     private static final int RANDOM_FAIL_REPEAT_TIMES = 10;
     private static final String REMOTE_CONTROL_RECEIVER_CLASS_NAME = "com.liskovsoft.smartyoutubetv2.common.misc.RemoteControlReceiver";
     private static final String UPDATE_CHANNELS_RECEIVER_CLASS_NAME = "com.liskovsoft.leanbackassistant.channels.UpdateChannelsReceiver";
     private static final String BOOTSTRAP_ACTIVITY_CLASS_NAME = "com.liskovsoft.smartyoutubetv2.tv.ui.main.SplashActivity";
     private static final String TASK_ID = RemoteControlWorker.class.getSimpleName();
     private static final String TAG = Utils.class.getSimpleName();
-    private static final String QR_CODE_URL_TEMPLATE = "https://api.qrserver.com/v1/create-qr-code/?data=%s";
     private static final int GLOBAL_VOLUME_TYPE = AudioManager.STREAM_MUSIC;
     private static final String GLOBAL_VOLUME_SERVICE = Context.AUDIO_SERVICE;
     public static final Handler sHandler = new Handler(Looper.getMainLooper());
@@ -507,10 +507,6 @@ public class Utils {
                 );
             }
         }
-    }
-
-    public static String toQrCodeLink(String data) {
-        return String.format(QR_CODE_URL_TEMPLATE, data);
     }
 
     public static void openLink(Context context, String url) {
@@ -1258,11 +1254,11 @@ public class Utils {
     }
 
     public static boolean passwordMatch(String original, String typed) {
-        if (original == null || (typed != null && typed.equalsIgnoreCase(SUPER_PASSWD))) {
+        if (original == null) {
             return true;
         }
 
-        return original.equals(typed);
+        return PasswordHash.matches(original, typed);
     }
 
     @SuppressLint("DiscouragedApi")

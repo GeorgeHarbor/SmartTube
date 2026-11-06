@@ -70,13 +70,8 @@ public class SignInFragment extends GuidedStepSupportFragment implements SignInV
 
         mFullSignInUrl = fullSignInUrl != null ? fullSignInUrl : signInUrl;
 
-        Glide.with(getContext())
-                .load(Utils.toQrCodeLink(mFullSignInUrl))
-                .placeholder(R.drawable.activate_account_qrcode)
-                .apply(ViewUtil.glideOptions())
-                .error(R.drawable.activate_account_qrcode)
-                .listener(mErrorListener)
-                .into(getGuidanceStylist().getIconView());
+        getGuidanceStylist().getIconView().setImageBitmap(
+            com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.render(mFullSignInUrl));
 
         String description = getString(R.string.signin_view_description, signInUrl);
         int start = description.indexOf(signInUrl);

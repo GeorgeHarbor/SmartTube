@@ -114,13 +114,13 @@ public class AboutSettingsPresenter extends BasePresenter<Void> {
 
     private void appendLinks(AppDialogPresenter settingsPresenter) {
         OptionItem releasesOption = UiOptionItem.from(getContext().getString(R.string.releases),
-                option -> Utils.openLink(getContext(), Utils.toQrCodeLink(getContext().getString(R.string.releases_url))));
+                option -> com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.show(getContext(), getContext().getString(R.string.releases_url)));
 
         OptionItem sourcesOption = UiOptionItem.from(getContext().getString(R.string.sources),
-                option -> Utils.openLink(getContext(), Utils.toQrCodeLink(getContext().getString(R.string.sources_url))));
+                option -> com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.show(getContext(), getContext().getString(R.string.sources_url)));
 
         //OptionItem webSiteOption = UiOptionItem.from(getContext().getString(R.string.web_site),
-        //        option -> Utils.openLink(getContext(), Utils.toQrCodeLink(getContext().getString(R.string.web_site_url))));
+        //        option -> com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.show(getContext(), getContext().getString(R.string.web_site_url)));
 
         settingsPresenter.appendSingleButton(releasesOption);
         settingsPresenter.appendSingleButton(sourcesOption);
@@ -135,7 +135,7 @@ public class AboutSettingsPresenter extends BasePresenter<Void> {
         for (Entry<String, String> entry : donations.entrySet()) {
             donateOptions.add(UiOptionItem.from(
                     entry.getKey(),
-                    option -> Utils.openLink(getContext(), Utils.toQrCodeLink(entry.getValue()))));
+                    option -> com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.show(getContext(), entry.getValue())));
         }
 
         if (!donateOptions.isEmpty()) {
@@ -174,7 +174,7 @@ public class AboutSettingsPresenter extends BasePresenter<Void> {
         for (Entry<String, String> entry : feedback.entrySet()) {
             feedbackOptions.add(UiOptionItem.from(
                     entry.getKey(),
-                    option -> Utils.openLink(getContext(), Utils.toQrCodeLink(entry.getValue()))));
+                    option -> com.liskovsoft.smartyoutubetv2.common.utils.LocalQr.show(getContext(), entry.getValue())));
         }
 
         if (!feedbackOptions.isEmpty()) {

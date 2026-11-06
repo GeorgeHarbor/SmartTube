@@ -71,6 +71,17 @@ public class AccountSettingsPresenter extends BasePresenter<Void> {
         appendProtectAccountWithPassword(settingsPresenter);
         appendSeparateSettings(settingsPresenter);
         appendSelectAccountOnBoot(settingsPresenter);
+        settingsPresenter.appendSingleButton(UiOptionItem.from("Reset local sign-ins", option -> {
+            AppDialogUtil.showConfirmationDialog(getContext(),"Remove local YouTube and Google Drive sign-ins? Settings are kept.",()->{
+                io.reactivex.Completable.fromAction(()->com.liskovsoft.sharedutils.prefs.GlobalPreferences.instance(getContext()).resetAccountCredentials())
+                    .subscribeOn(io.reactivex.schedulers.Schedulers.io())
+                    .observeOn(io.reactivex.android.schedulers.AndroidSchedulers.mainThread())
+                    .subscribe(()->{
+                        MessageHelpers.showLongMessage(getContext(),"Local sign-ins removed. Reopen the app to sign in again.");
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(()->Runtime.getRuntime().exit(0),1500);
+                    },failure->MessageHelpers.showLongMessage(getContext(),"Could not reset local sign-ins"));
+            });
+        }));
 
         Account account = getSignInService().getSelectedAccount();
         int accountIndex = accounts != null ? accounts.indexOf(account) : -1;
@@ -215,12 +226,12 @@ public class AccountSettingsPresenter extends BasePresenter<Void> {
         }
 
         settingsPresenter.closeDialog();
-        SimpleEditDialog.showPassword(
+        SimpleEditDialog.showPasswordCheck(
                 getContext(),
                 getContext().getString(R.string.enter_account_password),
-                null,
+                password,
                 newValue -> {
-                    if (Utils.passwordMatch(password, newValue)) {
+                    if (newValue != null) {
                         AccountsData.instance(getContext()).setAccountPassword(null);
                         BrowsePresenter.instance(getContext()).updateSections();
                         //onSuccess.run();
@@ -237,12 +248,13 @@ public class AccountSettingsPresenter extends BasePresenter<Void> {
             return;
         }
 
-        SimpleEditDialog.showPassword(
+        SimpleEditDialog.showPasswordCheck(
                 getContext(),
                 getContext().getString(R.string.enter_account_password),
-                null,
+                password,
                 newValue -> {
-                    if (Utils.passwordMatch(password, newValue)) {
+                    if (newValue != null) {
+                        AccountsData.instance(getContext()).setAccountPassword(newValue);
                         AccountsData.instance(getContext()).setPasswordAccepted(true);
                         BrowsePresenter.instance(getContext()).updateSections();
                         //onSuccess.run();

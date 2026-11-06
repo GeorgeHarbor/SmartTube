@@ -166,8 +166,8 @@ public class AppDialogUtil {
                 UiOptionItem.from(context.getString(R.string.share_qr_link), optionItem -> {
                     dialogPresenter.closeDialog(); // pause bg video
                     if (video.videoId != null) {
-                        Utils.openLink(context, Utils.toQrCodeLink(
-                                Utils.convertToFullVideoUrl(video.videoId, positionSec == -1 ? Utils.toSec(video.getPositionMs()) : positionSec).toString()));
+                        LocalQr.show(context,
+                                Utils.convertToFullVideoUrl(video.videoId, positionSec == -1 ? Utils.toSec(video.getPositionMs()) : positionSec).toString());
                     }
                 }));
     }

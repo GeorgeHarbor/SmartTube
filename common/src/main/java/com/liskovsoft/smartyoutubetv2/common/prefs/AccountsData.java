@@ -72,7 +72,7 @@ public class AccountsData implements AccountChangeListener {
     }
 
     public void setAccountPassword(String password) {
-        mPasswords.put(getAccountName(), new PasswordItem(getAccountName(), password));
+        mPasswords.put(getAccountName(), new PasswordItem(getAccountName(), com.liskovsoft.smartyoutubetv2.common.utils.PasswordHash.create(password)));
 
         persistState();
     }

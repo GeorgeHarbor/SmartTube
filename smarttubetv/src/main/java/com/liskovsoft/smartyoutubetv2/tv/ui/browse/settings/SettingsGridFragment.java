@@ -334,12 +334,13 @@ public class SettingsGridFragment extends GridFragment implements SettingsSectio
                 if (password == null) {
                     openSettings((SettingsItem) item);
                 } else {
-                    SimpleEditDialog.showPassword(
+                    SimpleEditDialog.showPasswordCheck(
                             getContext(),
                             getContext().getString(R.string.enter_settings_password),
-                            null,
+                            password,
                             newValue -> {
-                                if (Utils.passwordMatch(password, newValue)) {
+                                if (newValue != null) {
+                                    getGeneralData().setSettingsPassword(newValue);
                                     openSettings((SettingsItem) item);
                                     return true;
                                 }

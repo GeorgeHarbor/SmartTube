@@ -367,7 +367,7 @@ public class GeneralData implements ProfileChangeListener {
     }
 
     public void setSettingsPassword(String password) {
-        mSettingsPassword = password;
+        mSettingsPassword = com.liskovsoft.smartyoutubetv2.common.utils.PasswordHash.create(password);
 
         persistState();
     }
@@ -377,7 +377,7 @@ public class GeneralData implements ProfileChangeListener {
     }
 
     public void setMasterPassword(String password) {
-        mMasterPassword = password;
+        mMasterPassword = com.liskovsoft.smartyoutubetv2.common.utils.PasswordHash.create(password);
 
         persistState();
     }
