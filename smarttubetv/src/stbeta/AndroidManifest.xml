@@ -4,6 +4,6 @@
     <!-- Fork: plain-text label (not a string resource), so Android's installer screen can show it
          without reading the APK's resources. Otherwise it shows the Application class name. -->
     <application
-        android:label="YouTube"
+        android:label="SmartTube (uroge)"
         tools:replace="android:label" />
 </manifest>

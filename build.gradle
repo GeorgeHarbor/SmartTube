@@ -19,6 +19,8 @@ buildscript {
         //jcenter()
     }
     dependencies {
+        // D8 patch for modern security-fixed dependency metadata; retain AGP 7.4.2.
+        classpath 'com.android.tools:r8:8.3.37'
         classpath 'com.android.tools.build:gradle:7.4.2'
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:' + kotlinVersion
 
@@ -38,6 +40,12 @@ allprojects {
         //jcenter()
     }
     configurations.all {
+        // Targeted security fixes; keep the ExoPlayer stack pinned.
+        resolutionStrategy.force 'com.google.protobuf:protobuf-javalite:3.25.5'
+        resolutionStrategy.force 'net.minidev:json-smart:2.5.2'
+        resolutionStrategy.force 'com.google.errorprone:error_prone_annotations:2.24.1'
+        resolutionStrategy.force 'com.google.j2objc:j2objc-annotations:2.8'
+
         // WorkManager conflict resolution (lint exception: old java runtime)
         // resolutionStrategy.force 'androidx.lifecycle:lifecycle-livedata-core:' + liveDataVersion
         // resolutionStrategy.force 'androidx.lifecycle:lifecycle-livedata:' + liveDataVersion
@@ -48,6 +56,7 @@ allprojects {
         resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:' + kotlinVersion
         resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:' + kotlinVersion
         resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:' + kotlinVersion
+        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib-common:' + kotlinVersion
         resolutionStrategy.force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:' + kotlinxVersion
         resolutionStrategy.force 'androidx.core:core-ktx:' + kotlinCoreXVersion
         resolutionStrategy.force 'androidx.core:core:' + coreXVersion
