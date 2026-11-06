@@ -206,6 +206,7 @@ public class MotherActivity extends FragmentActivity {
 
     @Override
     protected void onResume() {
+        DialApproval.resume(this);
         mIsBackPressed = false;
         try {
             super.onResume();
@@ -224,6 +225,7 @@ public class MotherActivity extends FragmentActivity {
 
     @Override
     protected void onPause() {
+        DialApproval.pause(this);
         super.onPause();
 
         // Stop managing the screensaver so a paused activity cannot keep the display awake.
@@ -432,6 +434,7 @@ public class MotherActivity extends FragmentActivity {
     }
 
     protected final void resetBackState() {
+        DialApproval.resume(this);
         mIsBackPressed = false;
     }
 

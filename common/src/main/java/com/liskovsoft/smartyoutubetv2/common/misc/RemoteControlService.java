@@ -20,6 +20,12 @@ import com.liskovsoft.youtubeapi.service.YouTubeServiceManager;
 
 public class RemoteControlService extends Service {
     private static final String TAG = RemoteControlService.class.getSimpleName();
+    private android.net.ConnectivityManager connectivity;
+    private final android.net.ConnectivityManager.NetworkCallback networkCallback = new android.net.ConnectivityManager.NetworkCallback() {
+        @Override public void onAvailable(android.net.Network network) { updateDialServer(); }
+        @Override public void onLost(android.net.Network network) { updateDialServer(); }
+        @Override public void onLinkPropertiesChanged(android.net.Network network, android.net.LinkProperties properties) { updateDialServer(); }
+    };
     private static final int NOTIFICATION_ID = RemoteControlService.class.hashCode();
 
     @Nullable
@@ -33,6 +39,8 @@ public class RemoteControlService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        connectivity=(android.net.ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+        if(connectivity!=null) connectivity.registerNetworkCallback(new android.net.NetworkRequest.Builder().build(),networkCallback);
 
         // https://stackoverflow.com/questions/46445265/android-8-0-java-lang-illegalstateexception-not-allowed-to-start-service-inten
         // NOTE: it's impossible to hide notification on Android 9 and above
@@ -59,6 +67,7 @@ public class RemoteControlService extends Service {
 
     @Override
     public void onDestroy() {
+        if(connectivity!=null) connectivity.unregisterNetworkCallback(networkCallback);
         DialServer.startStop(false, null);
         super.onDestroy();
     }

@@ -58,6 +58,12 @@ public class DialServer {
     private WifiManager.MulticastLock mMulticastLock;
     private MulticastSocket mSsdpSocket;
     private ServerSocket mHttpSocket;
+    private final java.util.concurrent.ThreadPoolExecutor clients = new java.util.concurrent.ThreadPoolExecutor(
+        4,4,0,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.ArrayBlockingQueue<>(8));
+    private final java.util.concurrent.ScheduledThreadPoolExecutor deadlines = new java.util.concurrent.ScheduledThreadPoolExecutor(1);
+    private final DialRateLimit rateLimit = new DialRateLimit();
+    private final java.util.Set<Socket> openClients=java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Socket,Boolean>());
+    private String boundIp;
     private volatile boolean mRunning;
     private volatile boolean mAppRunning;
 
@@ -74,6 +80,9 @@ public class DialServer {
     }
 
     public static synchronized void startStop(boolean enable, Factory factory) {
+        if (enable && sInstance != null && !java.util.Objects.equals(sInstance.boundIp, getLocalIp())) {
+            sInstance.stop();sInstance=null;
+        }
         if (enable && sInstance == null) {
             sInstance = factory.create();
             sInstance.start();
@@ -84,6 +93,9 @@ public class DialServer {
     }
 
     private void start() {
+        deadlines.setRemoveOnCancelPolicy(true);
+        boundIp = getLocalIp();
+        if (boundIp == null) return;
         mRunning = true;
 
         WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
@@ -104,6 +116,11 @@ public class DialServer {
 
     private void stop() {
         mRunning = false;
+        DialApproval.cancel();
+        for(Socket socket:openClients)try{socket.close();}catch(IOException ignored){}
+        openClients.clear();
+        clients.shutdownNow();
+        deadlines.shutdownNow();
         closeQuietly(mSsdpSocket);
         if (mHttpSocket != null) {
             try {
@@ -177,13 +194,15 @@ public class DialServer {
         try {
             mHttpSocket = new ServerSocket();
             mHttpSocket.setReuseAddress(true);
-            mHttpSocket.bind(new InetSocketAddress(HTTP_PORT));
+            mHttpSocket.bind(new InetSocketAddress(boundIp, HTTP_PORT));
             Log.d(TAG, "HTTP listening on %s", HTTP_PORT);
             while (mRunning) {
                 Socket client = mHttpSocket.accept();
-                Thread thread = new Thread(() -> handle(client), "DialClient");
-                thread.setDaemon(true);
-                thread.start();
+                if(!mRunning){client.close();break;}
+                openClients.add(client);
+                java.util.concurrent.ScheduledFuture<?> deadline=deadlines.schedule(()->{try{client.close();}catch(IOException ignored){}},10,java.util.concurrent.TimeUnit.SECONDS);
+                try { clients.execute(()->{try{handle(client);}finally{deadline.cancel(false);openClients.remove(client);}}); }
+                catch(java.util.concurrent.RejectedExecutionException full){deadline.cancel(false);openClients.remove(client);client.close();}
             }
         } catch (IOException e) {
             if (mRunning) {
@@ -195,43 +214,8 @@ public class DialServer {
     private void handle(Socket client) {
         try (Socket socket = client) {
             socket.setSoTimeout(10_000);
-            InputStream in = socket.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-            String requestLine = reader.readLine();
-            if (requestLine == null) {
-                return;
-            }
-            String[] parts = requestLine.split(" ");
-            if (parts.length < 2) {
-                return;
-            }
-            String method = parts[0];
-            String path = parts[1];
-            int contentLength = 0;
-            String line;
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                int colon = line.indexOf(':');
-                if (colon > 0 && line.substring(0, colon).trim().equalsIgnoreCase("Content-Length")) {
-                    try {
-                        contentLength = Integer.parseInt(line.substring(colon + 1).trim());
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-            }
-            String body = "";
-            if (contentLength > 0 && contentLength <= MAX_BODY_SIZE) {
-                char[] chars = new char[contentLength];
-                int read = 0;
-                while (read < contentLength) {
-                    int count = reader.read(chars, read, contentLength - read);
-                    if (count < 0) {
-                        break;
-                    }
-                    read += count;
-                }
-                body = new String(chars, 0, read);
-            }
-
+            DialRequest request = DialRequest.read(socket.getInputStream());
+            String method=request.method,path=request.path,body=request.body;
             OutputStream out = socket.getOutputStream();
             String ip = getLocalIp();
             String base = "http://" + ip + ":" + HTTP_PORT;
@@ -244,12 +228,23 @@ public class DialServer {
                 respond(out, "200 OK", "text/xml; charset=utf-8", appStatus(), null);
             } else if ("POST".equals(method) && stripSlash(path).equals(appPath)) {
                 String pairingCode = parseForm(body).get("pairingCode");
-                mAppRunning = true;
-                respond(out, "201 Created", null, null, Collections.singletonMap("Location", base + appPath + "/run"));
-                onLaunch(pairingCode);
+                String address=socket.getInetAddress().getHostAddress();
+                if(request.headers.containsKey("origin") || request.headers.containsKey("sec-fetch-site")) {
+                    respond(out,"403 Forbidden",null,null,null);return;
+                }
+                if(!rateLimit.allow(address,android.os.SystemClock.elapsedRealtime())) {
+                    respond(out,"429 Too Many Requests",null,null,null);return;
+                }
+                if(pairingCode==null || pairingCode.isEmpty() || pairingCode.length()>1024 || !pairingCode.matches("[ -~]+")) {
+                    respond(out,"400 Bad Request",null,null,null);return;
+                }
+                if(!DialApproval.request(address,()->{
+                    if(mRunning) try { clients.execute(()->{if(mRunning){onLaunch(pairingCode);}}); }
+                    catch(java.util.concurrent.RejectedExecutionException ignored){}
+                })) {respond(out,"403 Forbidden",null,null,null);return;}
+                respond(out,"201 Created",null,null,Collections.singletonMap("Location",base+appPath+"/run"));
             } else if ("DELETE".equals(method) && path.startsWith(appPath)) {
-                mAppRunning = false;
-                respond(out, "200 OK", null, null, null);
+                respond(out, "405 Method Not Allowed", null, null, null);
             } else {
                 respond(out, "404 Not Found", null, null, null);
             }
@@ -263,13 +258,7 @@ public class DialServer {
         if (pairingCode == null) {
             return;
         }
-        Thread thread = new Thread(() -> {
-            if (mRemoteControlService.registerPairingCode(pairingCode) && mOnLaunch != null) {
-                mOnLaunch.run();
-            }
-        }, "DialPairing");
-        thread.setDaemon(true);
-        thread.start();
+        if (mRunning && mRemoteControlService.registerPairingCode(pairingCode)) {mAppRunning=true;if(mOnLaunch!=null)mOnLaunch.run();}
     }
 
     private String deviceDescription() {
