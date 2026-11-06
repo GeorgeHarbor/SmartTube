@@ -1,0 +1,5 @@
+{
+  "main": "cef12f3eb405fa4d932a6496748368572083c605",
+  "modules": " ad16934302a2d115550c7d052e86b265d2c6b9ed MediaServiceCore (remotes/origin/smarttube-playback-startup)\n 5b6b5d1d3ba670e3f89edef1d1394a7562251f2c MediaServiceCore/SharedModules (heads/master)\n 80a00f674fcdb518b31dbb94d7977a7214911cbb SharedModules (remotes/origin/smarttube-debug-logging)\n",
+  "baseline_validation": "Qualified app tasks: lintStbetaRelease, testStbetaDebugUnitTest and assembleStbetaRelease passed in 1m21s (1200 tasks). Initial broad task selection reached unrelated Cronet/Robolectric suites and failed on sandbox home-cache permissions."
+}

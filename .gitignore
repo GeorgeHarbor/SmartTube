@@ -75,3 +75,9 @@ hs_err_pid*.log
 # Fork release signing (never commit)
 keystore.properties
 *.jks
+
+# Local security tooling output
+__pycache__/
+/dependency-tree.txt
+/dependency-audit.json
+/dist/

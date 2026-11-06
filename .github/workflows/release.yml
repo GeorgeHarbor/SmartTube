@@ -1,131 +1,103 @@
-name: Release
-
-# Builds a signed beta when a v* tag is pushed (v32.68.18 -> versionName 32.68.18) and publishes it as a versioned release.
-# The app's updater reads releases/download/latest/smarttube_beta2.json, so the rolling "latest" release is refreshed too.
-
+name: Verified signed release
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
-
+    inputs:
+      version:
+        description: 'Version name, for example 32.69.1'
+        required: true
 permissions:
-  contents: write
-
+  contents: read
 concurrency:
-  group: release
+  group: signed-release
   cancel-in-progress: false
-
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
-          fetch-depth: 50 # enough history for the changelog
+          fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.SYNC_TOKEN || github.token }}
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      - name: Require reviewed source and observed device checks
+        env:
+          APPROVED_SHA: ${{ vars.DEVICE_CHECKS_APPROVED_SHA }}
+        run: |
+          test "$GITHUB_REPOSITORY" = 'uroge/SmartTube'
+          test "$APPROVED_SHA" = "$GITHUB_SHA"
+          git merge-base --is-ancestor HEAD origin/master
+          git submodule status --recursive | python3 -c 'import sys; lines=sys.stdin.readlines(); assert all(x.startswith(" ") for x in lines), "Dirty or uninitialized module graph"'
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           java-version: '17'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Configure Build Signing
+          distribution: temurin
+          cache: gradle
+      - run: sdkmanager 'platforms;android-34' 'build-tools;30.0.3'
+      - name: Select monotonically increasing version in CI
+        id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          NAME="${REQUESTED:-${GITHUB_REF_NAME#v}}"
+          [[ "$NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          CODE=$(python3 -c 'import re; print(int(re.search(r"versionCode (\d+)",open("smarttubetv/build.gradle").read())[1])*100)')
+          for flavor in beta stable; do
+            status=$(curl --silent --show-error --location --output "$RUNNER_TEMP/$flavor.json" --write-out '%{http_code}' "https://github.com/uroge/SmartTube/releases/download/latest/smarttube_${flavor}2.json")
+            if [ "$status" = 200 ]; then
+              published=$(jq '[.[] | .versionCode? // empty] | max // 0' "$RUNNER_TEMP/$flavor.json")
+              if [ "$published" -ge "$CODE" ]; then CODE=$((published+1)); fi
+            elif [ "$status" != 404 ]; then exit 1; fi
+          done
+          python3 - "$NAME" "$CODE" <<'PY'
+          import re,sys
+          from pathlib import Path
+          p=Path('smarttubetv/build.gradle');s=p.read_text()
+          s=re.sub(r'versionCode \d+', 'versionCode '+sys.argv[2],s,count=1)
+          s=re.sub(r'versionName "[^"]+"','versionName "'+sys.argv[1]+'"',s,count=1)
+          p.write_text(s)
+          PY
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+      - name: Check source, tests and lint before signing
+        run: |
+          python3 security/check-source.py
+          ./gradlew --no-daemon -Pkotlin.compiler.execution.strategy=in-process :smarttubetv:testStbetaDebugUnitTest :common:testStbetaDebugUnitTest :sharedutils:testDebugUnitTest :appupdatechecker2:testStbetaDebugUnitTest :smarttubetv:lintStbetaRelease :smarttubetv:lintStstableRelease :smarttubetv:lintStfdroidRelease
+          ./gradlew :smarttubetv:dependencies --configuration stbetaReleaseRuntimeClasspath > dependency-tree.txt
+          python3 security/dependency-audit.py dependency-tree.txt
+      - name: Configure release signing
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           ALIAS: ${{ secrets.ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          # Updates only install over a build signed with the same key, so never release unsigned
-          if [ -z "$SIGNING_KEY" ]; then
-            echo "::error::SIGNING_KEY secret is missing"
-            exit 1
-          fi
-          echo "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/key.jks"
-          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "$RUNNER_TEMP/key.jks" "$KEY_STORE_PASSWORD" "$ALIAS" "$KEY_PASSWORD" > keystore.properties
-
-      - name: Set Version
-        id: version
+          test -n "$SIGNING_KEY"
+          umask 077
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/key.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$RUNNER_TEMP/key.jks" "$KEY_STORE_PASSWORD" "$ALIAS" "$KEY_PASSWORD" > keystore.properties
+      - name: Build and verify every flavor
         run: |
-          UPSTREAM_CODE=$(grep -m1 'versionCode [0-9]' smarttubetv/build.gradle | grep -o '[0-9]\+')
-          UPSTREAM_NAME=$(grep -m1 'versionName' smarttubetv/build.gradle | awk -F'"' '{print $2}')
-          PUBLISHED=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/latest/smarttube_beta2.json" \
-            | jq '[.[] | .versionCode? // empty] | max // 0' || echo 0)
-          PUBLISHED=${PUBLISHED:-0}
-
-          # upstream code * 100 + fork build: a newer upstream version always outranks older fork builds
-          CODE=$(( UPSTREAM_CODE * 100 ))
-          if [ "$PUBLISHED" -ge "$CODE" ]; then
-            CODE=$(( PUBLISHED + 1 ))
-          fi
-          # versionName comes from the pushed tag; manual dispatch falls back to upstream name + fork build
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            NAME="${GITHUB_REF_NAME#v}"
-            # Two-part names get a patch appended by build.gradle, which would break the APK paths below
-            if ! [[ "$NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Tag must look like v1.2.3, got $GITHUB_REF_NAME"
-              exit 1
-            fi
-          else
-            NAME="$UPSTREAM_NAME.$(( CODE % 100 ))"
-          fi
-
-          sed -i "s/versionCode [0-9]\+/versionCode $CODE/; s/versionName \".*\"/versionName \"$NAME\"/" smarttubetv/build.gradle
-          echo "Releasing $NAME ($CODE), previously published: $PUBLISHED"
-          echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Build with Gradle
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleStbetaRelease
-
-      - name: Prepare Release Assets
-        env:
-          NAME: ${{ steps.version.outputs.name }}
-          CODE: ${{ steps.version.outputs.code }}
-        run: |
-          OUT=smarttubetv/build/outputs/apk/stbeta/release
-          mkdir dist
-          for abi in armeabi-v7a arm64-v8a x86; do
-            cp "$OUT/SmartTube_beta_${NAME}_${abi}.apk" "dist/smarttube_beta_${abi}.apk"
-          done
-
-          BASE="https://github.com/$GITHUB_REPOSITORY/releases/download/latest"
-          CHANGES=$(git log -n 10 --no-merges --pretty=format:%s | jq -R . | jq -s .)
-          jq -n --arg base "$BASE" --arg name "$NAME" --argjson code "$CODE" --argjson changes "$CHANGES" '{
-            package: {
-              downloadUrlList: [$base + "/smarttube_beta_armeabi-v7a.apk"],
-              "downloadUrlList_arm64-v8a": [$base + "/smarttube_beta_arm64-v8a.apk"],
-              downloadUrlList_x86: [$base + "/smarttube_beta_x86.apk"]
-            },
-            ($name): {versionCode: $code, changelog: $changes}
-          }' > dist/smarttube_beta2.json
-          cat dist/smarttube_beta2.json
-
-      - name: Publish Release
+          ./gradlew --no-daemon :smarttubetv:assembleStbetaRelease :smarttubetv:assembleStstableRelease :smarttubetv:assembleStfdroidRelease
+          find smarttubetv/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do python3 security/inspect-apk.py --signed "$apk"; done
+          python3 security/prepare-release.py --name '${{ steps.version.outputs.name }}' --code '${{ steps.version.outputs.code }}'
+          "$ANDROID_HOME/build-tools/30.0.3/apksigner" verify --print-certs dist/smarttube_beta_arm64-v8a.apk > dist/signing-certificate.txt
+      - name: Publish immutable release before rolling feed
         env:
           NAME: ${{ steps.version.outputs.name }}
         run: |
-          NOTES=$(git log -n 10 --no-merges --pretty=format:'- %s')
-
-          # The real release for this version, kept forever and flagged as the repo's latest
-          gh release create "v$NAME" dist/* --title "SmartTube $NAME" --notes "$NOTES" --latest
-
-          # Rolling release the in-app updater polls
-          git tag -f latest
-          git push -f origin refs/tags/latest
-          if gh release view latest > /dev/null 2>&1; then
-            gh release edit latest --title "SmartTube $NAME" --notes "Fork build $NAME" --latest=false
-            gh release upload latest dist/* --clobber
+          gh release create "v$NAME" dist/* --target "$GITHUB_SHA" --title "SmartTube (uroge) $NAME" --notes 'Reviewed security-maintained release. See provenance.json, SHA256SUMS and signing-certificate.txt.' --latest
+          # The manifest points to immutable versioned APK URLs. Publishing it last avoids partial releases.
+          if gh release view latest >/dev/null 2>&1; then
+            gh release upload latest dist/smarttube_beta2.json dist/smarttube_stable2.json --clobber
           else
-            gh release create latest dist/* --title "SmartTube $NAME" --notes "Fork build $NAME" --latest=false
+            gh release create latest dist/smarttube_beta2.json dist/smarttube_stable2.json --target "$GITHUB_SHA" --title 'Update manifests' --notes 'Pointers to verified immutable releases' --latest=false
           fi
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/key.jks"

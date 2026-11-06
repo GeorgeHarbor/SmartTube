@@ -1,42 +1,40 @@
-# Privacy Policy for SmartTube (F-Droid Build)
+# Privacy — SmartTube (uroge)
 
-**Last Updated:** March 21, 2026
+This policy covers the independently signed `io.github.uroge.smarttube` flavors.
+The fork contains no Firebase/Crashlytics telemetry. QR images are generated locally;
+activation codes are never sent to an external QR-image service.
 
-This Privacy Policy applies specifically to the **F-Droid flavor** of SmartTube (Package ID: `app.smarttube.fdroid`). This version is specifically hardened for user privacy and compliance with F-Droid’s inclusion policy.
+YouTube and Google receive normal playback, search, authentication and account
+requests, including your IP address. Signed-in activity may be associated with your
+Google account. Sign-in uses Google/YouTube activation flows; this fork does not
+collect your Google password. Account records are encrypted with Android Keystore
+keys and kept in app-private storage excluded from backups.
 
-## 1. Scope of this Policy
-This document covers the **F-Droid build** only. Other versions or "flavors" of the application (e.g., Stable, Beta) may contain additional features such as self-update mechanisms or crash reporting that are removed in this specific F-Droid release.
+Optional SponsorBlock, DeArrow and Return YouTube Dislike features keep their
+existing defaults. When used, their operators receive requests containing video
+IDs or related video metadata, and see network metadata such as your IP address.
+These are third-party services with their own policies. Their requests do not carry
+Google Authorization or Cookie headers. Disable them in settings if undesired.
 
-## 2. Data Collection and Processing
-* **No Backend:** The F-Droid build of SmartTube operates entirely as a client-side application. It does not communicate with any developer-controlled servers.
-* **No Telemetry or Analytics:** This version contains no tracking code, telemetry, or analytics frameworks (e.g., no Firebase, no Crashlytics). We do not monitor how you use the app.
-* **No Update Tracking:** The self-update mechanism is disabled in this flavor. Updates are handled exclusively through the F-Droid client.
+Google Drive backup is optional and uses Google authentication. Both Drive and
+local backups contain allowlisted settings only, excluding account credentials,
+app passwords and casting identities. Settings restore does not restore sign-ins.
+Old backups created by other versions may still contain credentials; this fork
+cannot remove copies you have already exported or uploaded.
 
-## 3. Third-Party Services (YouTube/Google)
-* **Authentication:** When you sign in, the application uses the official Google OAuth 2.0 flow. This is a secure method that allows you to authorize the app without sharing your password with the developer.
-* **Local Storage:** Authentication tokens are stored exclusively on your device's secure local storage. They are never transmitted to, or stored by, the developer.
-* **Data Flow:** Video data and account information are fetched directly from YouTube/Google servers to your device.
+DIAL discovery, when enabled, advertises the TV device on its LAN. Every new DIAL
+pairing needs approval on the foreground TV screen; existing approved sessions
+continue through YouTube's remote-control service. Casting requires a trusted LAN.
 
-## 4. Community-Driven Services & Third-Party APIs
-To provide core functionality and enhanced features, the application communicates with the following community-driven services:
-* **SponsorBlock:** The app sends the ID of the video being viewed to the SponsorBlock API to retrieve crowd-sourced skip segments.
-* **DeArrow:** The app sends the ID of the video being viewed to the DeArrow API to retrieve crowd-sourced titles.
-* **Return YouTube Dislike (RYD):** The app sends the Video ID to the RYD API to retrieve estimated dislike counts.
-* **Anonymous Metadata Requests:** These requests are "read-only" and do not include personal identifiers, Google account tokens, or user-specific profile data. 
-* **General API Communication:** The application may communicate with other third-party infrastructure (such as official YouTube/Google endpoints) solely to fetch media content and metadata required for the application to function. These functional requests do not involve the collection or storage of personal user data by the developer.
+The beta and stable updaters contact GitHub releases controlled by `uroge`.
+GitHub sees ordinary request metadata. Updates are checked for package identity,
+version, SHA-256 and the installed app's signing certificate before installation.
+The F-Droid flavor has no in-app update feed. Public documentation, donations and
+external links contact their destination only when opened.
 
-## 5. Automated Decision-Making and Profiling
-In accordance with **GDPR Article 15**, we confirm for this build:
-* **No Profiling:** We do not track user behavior to build profiles.
-* **No Automated Decisions:** The app does not use algorithms or AI to make decisions about users or to manipulate content ranking. Content is served as-is from the YouTube API.
+Microphone access supports voice search; the device's speech recognition provider
+may process audio under its own policy. Storage and overlay access are used only
+by features that require them. Release builds disable verbose diagnostic logging.
 
-## 6. External Links & Donations
-The application contains static links and addresses for project documentation (GitHub) and donations (e.g., PayPal, Patreon, Bitcoin, Ethereum, and other cryptocurrencies).
-* **Manual Action Only:** These links do not trigger automatically. No data is transmitted until the user manually clicks a link or copies an address.
-* **Third-Party Policies:** Once you leave the application to a donation platform or use a third-party wallet, your data is governed by the privacy policy of those respective services.
-
-## 7. Your Rights (GDPR / CCPA)
-Because this specific build flavor does not store or transmit personal data to the developer, we hold no identifiable records (names, emails, IPs) associated with your identity. Therefore, we have no data to provide or delete upon request.
-
-## 8. Contact
-For technical inquiries regarding the privacy architecture of the F-Droid build, please open an issue on the official GitHub repository.
+Encryption cannot protect a running app from a compromised operating system.
+Local app locks are convenience access controls, not an OS security boundary.

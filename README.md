@@ -1,47 +1,49 @@
-<div align="center">
-  <img src="smarttubetv/src/main/res/drawable-nodpi/loading_brand_dark.png" alt="SmartTube Harbor" width="720">
+# SmartTube (uroge)
 
-  # SmartTube Harbor
+An independently signed, security-maintained fork of
+[GeorgeHarbor/SmartTube](https://github.com/GeorgeHarbor/SmartTube), based on
+[yuliskov/SmartTube](https://github.com/yuliskov/SmartTube).
 
-  **A community-maintained Android TV fork of [SmartTube](https://github.com/yuliskov/SmartTube).**
+**Android 6.0/API 23 or newer. Private testing until the release checklist passes.**
 
-  [Latest beta builds](https://github.com/GeorgeHarbor/SmartTube/releases/tag/latest) · [Upstream project](https://github.com/yuliskov/SmartTube)
+The app retains SmartTube playback and optional community services. This fork adds
+local QR generation, explicit approval for new casting pairings, encrypted account
+storage, settings-only backups, strict HTTPS, and verified updates from this
+repository. App locks have no master-password bypass. Firebase crash reporting is
+removed. See the [privacy policy](PRIVACY.md) for network services and permissions.
 
-  <img src="images/harbor_home.jpg" alt="SmartTube Harbor home screen" width="720">
-</div>
+## Build
 
-## Why this fork exists
-
-SmartTube Harbor is a personal, open-source fork for experimenting with a more polished Android TV experience and sharing those improvements as installable builds. It keeps SmartTube's core video browsing and playback, while adding focused interface refinements, faster playback startup, and better Android TV integration. The fork regularly merges changes from the upstream SmartTube project.
-
-## What this fork adds
-
-- **A refreshed player layout:** YouTube TV-style playback controls, clearer title and detail placement, and a cleaner controls background.
-- **Branded loading screens:** A custom app startup screen and a video-opening screen with a dimmed, blurred thumbnail and slim red arc loader.
-- **Faster playback startup:** Decoder reuse, less repeated JSON parsing, and playback warm-up after the first home row loads.
-- **Android TV Watch Next integration:** Partially watched videos can appear in Watch Next, and selecting a row opens the video in the app.
-- **Clearer settings navigation:** Icons in the settings menu and additional interface refinements.
-
-## SmartTube features retained
-
-SmartTube Harbor builds on SmartTube's established feature set, including SponsorBlock, playback speed controls, high-resolution and high-frame-rate playback, HDR support, live chat, customizable buttons, and operation without Google Services. See the [upstream project](https://github.com/yuliskov/SmartTube) for broader documentation and compatibility details.
-
-## Install
-
-Download the latest beta APK for your device from [GitHub Releases](https://github.com/GeorgeHarbor/SmartTube/releases/tag/latest). Choose the matching architecture (`arm64-v8a` for most recent TVs, `armeabi-v7a` for many older devices, or `x86` where applicable). Android TV requires sideloading; see the [upstream installation guide](https://github.com/yuliskov/SmartTube#installation) for step-by-step instructions.
-
-> This is an independent fork. Builds and releases are provided from this repository; upstream release links and update instructions may not apply.
-
-## Build from source
-
-The project uses Gradle and JDK 17. Clone with submodules, then build the beta release:
+Clone the complete source, including pinned submodules:
 
 ```sh
-git clone --recurse-submodules https://github.com/GeorgeHarbor/SmartTube.git
+git clone --recurse-submodules https://github.com/uroge/SmartTube.git
 cd SmartTube
-./gradlew assembleStbetaRelease
+python3 security/check-source.py
+./gradlew :smarttubetv:assembleStbetaRelease
 ```
 
-## Upstream
+Use JDK 17, the included Gradle wrapper, Android platform 34 and build-tools 30.0.3.
+Configure your signing key before installing a release APK. See
+[SECURITY_BUILD.md](SECURITY_BUILD.md) for test commands, signing, updates and
+reproducibility details. Application IDs are `io.github.uroge.smarttube.beta`,
+`.stable` and `.fdroid`; this installs separately from other maintainers' builds.
+Sign in again after installation. Settings imports never import account credentials.
 
-SmartTube Harbor is based on [SmartTube by Yurii Liskov](https://github.com/yuliskov/SmartTube), a free and open-source media client for Android TVs and TV boxes. Please see the upstream repository for its license, original contributors, and project history.
+## Updates and maintenance
+
+Beta and stable builds check only this repository's release manifests. Updates
+must match the installed signing certificate, package ID, manifest version and
+SHA-256. The F-Droid flavor has no in-app updater.
+
+Upstream changes are proposed through a daily review branch. They do not merge
+or publish automatically. CI checks source regressions, unit tests, lint, APK
+contents and resolved dependency advisories. Release signing secrets are confined
+to a maintainer-approved GitHub environment.
+
+Complete the [device checklist](security/DEVICE_TEST_RESULTS.md) on the exact
+release commit before enabling publication. In particular, compilation alone does
+not verify real TV playback, phone casting or Android Keystore behavior.
+
+Licensed under the [MIT license](LICENSE). Upstream contributors retain their
+copyrights and attribution in the source.
