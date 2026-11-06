@@ -161,11 +161,14 @@ public class BackupAndRestoreHelper implements OnResult {
             zipUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         }
 
-        unpackTempZip(
-                zipUri,
-                () -> BackupSettingsPresenter.instance(mContext).showLocalRestoreDialogApi30(),
-                error -> MessageHelpers.showLongMessage(mContext, "Failed to restore backup: " + error.getMessage())
-        );
+        final Uri selected=zipUri;
+        new android.app.AlertDialog.Builder(mContext)
+            .setTitle("Import settings backup?")
+            .setMessage("Only approved settings are imported. Accounts, passwords and casting identities are excluded.")
+            .setNegativeButton(android.R.string.cancel,(dialog,which)->{if(mContext instanceof android.app.Activity)((android.app.Activity)mContext).finish();})
+            .setPositiveButton(android.R.string.ok,(dialog,which)->unpackTempZip(selected,
+                ()->BackupSettingsPresenter.instance(mContext).showLocalRestoreDialogApi30(),
+                error->MessageHelpers.showLongMessage(mContext,"Invalid settings backup"))).show();
     }
 
     public void unpackTempZip(File tempZip) {
@@ -177,39 +180,47 @@ public class BackupAndRestoreHelper implements OnResult {
         File mediaDir = FileHelpers.getExternalMediaDirectory(mContext);
         File dataDir = new File(mediaDir, "data");
 
-        // Remove old data
-        if (dataDir.exists()) FileHelpers.delete(dataDir);
-
-        if (ZipHelper2.hasRootDir(tempZip, "data")) {
-            // Unpack ZIP with data folder
-            ZipHelper2.unzip(tempZip, mediaDir);
-        } else {
-            // Seems we've packed the contents of the data dir not data itself
-            ZipHelper2.unzip(tempZip, dataDir);
-        }
+        File staging=new File(mContext.getCacheDir(),"import-"+java.util.UUID.randomUUID());
+        File previous=new File(mediaDir,".previous-settings");
+        try {
+            SafeZip.extract(tempZip,staging);
+            SettingsBackup.sanitizeTree(staging);
+            File incoming=new File(staging,"data").exists()?new File(staging,"data"):staging;
+            File prepared=new File(mediaDir,".prepared-settings");
+            SafeZip.delete(prepared);
+            FileHelpers.copy(incoming,prepared);
+            SafeZip.delete(previous);
+            if(dataDir.exists() && !dataDir.renameTo(previous))throw new java.io.IOException("Cannot preserve existing settings");
+            if(!prepared.renameTo(dataDir)){
+                previous.renameTo(dataDir);
+                throw new java.io.IOException("Cannot stage settings");
+            }
+            SafeZip.delete(previous);
+        }catch(java.io.IOException failure){throw new IllegalStateException("Invalid settings archive",failure);}
+        finally{SafeZip.delete(staging);tempZip.delete();}
 
         // Delete the temporary ZIP
         tempZip.delete();
     }
 
+    private static final java.util.concurrent.ThreadPoolExecutor IMPORTS = new java.util.concurrent.ThreadPoolExecutor(
+        1,1,0,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.ArrayBlockingQueue<>(2));
     private void unpackTempZip(Uri zipUri, Runnable onSuccess, OnError onError) {
-        if (zipUri == null) {
-            MessageHelpers.showLongMessage(mContext, "No ZIP received");
-            return;
-        }
-
-        // Cannot use async calls because the app usually isn't started yet.
+        android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
         try {
-            unpackTempZip(zipUri);
-            if (onSuccess != null) {
-                onSuccess.run();
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            if (onError != null) {
-                onError.onError(ex);
-            }
-        }
+            IMPORTS.execute(()->{
+                try {
+                    if(zipUri==null)throw new IllegalArgumentException("No backup selected");
+                    unpackTempZip(zipUri);
+                    if(onSuccess!=null)main.post(onSuccess);
+                }catch(Exception failure){
+                    main.post(()->{
+                        if(onError!=null)onError.onError(failure);
+                        else MessageHelpers.showLongMessage(mContext,"Invalid settings backup");
+                    });
+                }
+            });
+        }catch(java.util.concurrent.RejectedExecutionException busy){MessageHelpers.showLongMessage(mContext,"Another settings import is in progress");}
     }
 
     private void unpackTempZip(Uri zipUri) {
@@ -221,7 +232,7 @@ public class BackupAndRestoreHelper implements OnResult {
 
         // Copy ZIP from URI to the temporary file
         String backupZipName = getSavedBackupZipName();
-        File tempZip = new File(mediaDir, backupZipName);
+        File tempZip = new File(mContext.getCacheDir(), "incoming-settings.zip");
         copyUriToFile(zipUri, tempZip);
 
         unpackTempZip(tempZip);
@@ -253,23 +264,14 @@ public class BackupAndRestoreHelper implements OnResult {
     }
 
     private void copyUriToFile(Uri uri, File outFile) {
-        try {
-            InputStream in = mContext.getContentResolver().openInputStream(uri);
-            OutputStream out = new FileOutputStream(outFile);
-
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = in.read(buffer)) != -1) {
-                out.write(buffer, 0, len);
-            }
-
-            in.close();
-            out.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new IllegalStateException("Failed to copyUriToFile", e);
-        }
+        if(uri==null || !("content".equals(uri.getScheme()) || "file".equals(uri.getScheme())))
+            throw new IllegalArgumentException("Only local backup files are accepted");
+        try(java.io.InputStream input=mContext.getContentResolver().openInputStream(uri);
+            java.io.FileOutputStream output=new java.io.FileOutputStream(outFile)){
+            if(input==null)throw new java.io.IOException("No backup stream");
+            byte[] buffer=new byte[8192];long total=0;int count;
+            while((count=input.read(buffer))!=-1){total+=count;if(total>100L*1024*1024)throw new java.io.IOException("Backup file too large");output.write(buffer,0,count);}
+        }catch(Exception failure){outFile.delete();throw new IllegalStateException("Cannot read settings backup",failure);}
     }
 
     private String getFileName(Uri uri) {
@@ -287,7 +289,7 @@ public class BackupAndRestoreHelper implements OnResult {
     private GeneralData getGeneralData() {
         return GeneralData.instance(mContext);
     }
-    
+
     private String createBackupZipNameWithTimestamp() {
         return mContext.getPackageName() + "_" + getTimeStamp() + ".zip";
     }

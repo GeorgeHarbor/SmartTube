@@ -51,45 +51,15 @@ public class ZipHelper {
         }
     }
 
-    public static boolean unzipToFolder(File zipFile, File outputFolder) {
-        if (!outputFolder.exists()) {
-            outputFolder.mkdirs();
-        }
-
-        try (ZipInputStream zipIn = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile)))) {
-            String canonicalOutputPath = outputFolder.getCanonicalPath() + File.separator;
-            ZipEntry entry;
-            while ((entry = zipIn.getNextEntry()) != null) {
-                File filePath = new File(outputFolder, entry.getName());
-
-                String canonicalFilePath = filePath.getCanonicalPath();
-
-                // Zip Slip protection
-                if (!canonicalFilePath.startsWith(canonicalOutputPath)) {
-                    throw new IOException("Blocked Zip Slip entry: " + entry.getName());
-                }
-
-                if (entry.isDirectory()) {
-                    filePath.mkdirs();
-                } else {
-                    if (filePath.getParentFile() != null) {
-                        filePath.getParentFile().mkdirs();
-                    }
-                    try (FileOutputStream output = new FileOutputStream(filePath)) {
-                        byte[] buffer = new byte[1024];
-                        int length;
-                        while ((length = zipIn.read(buffer)) > 0) {
-                            output.write(buffer, 0, length);
-                        }
-                    }
-                }
-                zipIn.closeEntry();
-            }
+    public static boolean unzipToFolder(File zipFile, File targetRoot) {
+        File staging=new File(targetRoot.getParentFile(),".import-"+java.util.UUID.randomUUID());
+        try {
+            SafeZip.extract(zipFile,staging);
+            SettingsBackup.sanitizeTree(staging);
+            com.liskovsoft.sharedutils.helpers.FileHelpers.copy(staging,targetRoot);
             return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        } catch(IOException failure) { throw new IllegalStateException("Invalid settings archive",failure); }
+        finally {SafeZip.delete(staging);}
     }
 
     public static boolean hasDirectories(File zipFile) {

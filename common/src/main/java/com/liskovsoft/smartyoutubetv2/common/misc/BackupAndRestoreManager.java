@@ -182,23 +182,8 @@ public class BackupAndRestoreManager implements MotherActivity.OnPermissions {
     }
 
     public void backupToDir(File target) {
-        if (target.isDirectory()) { // plain sdcard storage
-            // remove old backup <app_id>/Backup
-            FileHelpers.delete(target);
-        }
-
-        if (mSharedPrefsDir.isDirectory() && !FileHelpers.isEmpty(mSharedPrefsDir)) {
-            File destination = new File(target, mSharedPrefsDir.getName());
-            FileHelpers.copy(mSharedPrefsDir, destination, file -> Helpers.endsWithAny(file.getName(), Utils.BACKUP_PREFS), null);
-
-            // Don't store unique id
-            FileHelpers.delete(new File(destination, HiddenPrefs.SHARED_PREFERENCES_NAME + ".xml"));
-        }
-
-        if (mFilesDir.isDirectory() && !FileHelpers.isEmpty(mFilesDir)) {
-            File destination = new File(target, mFilesDir.getName());
-            FileHelpers.copy(mFilesDir, destination, null, dir -> Helpers.equalsAny(dir.getName(), Utils.BACKUP_DIRS));
-        }
+        try { SettingsBackup.exportSettings(mFilesDir,target); }
+        catch(java.io.IOException failure){throw new IllegalStateException("Settings backup failed",failure);}
     }
 
     private void restoreData(String backupName) {
@@ -208,20 +193,9 @@ public class BackupAndRestoreManager implements MotherActivity.OnPermissions {
         File sharedPrefsBackupDir = new File(currentBackup, SHARED_PREFS_SUBDIR);
         File filesBackupDir = new File(currentBackup, FILES_SUBDIR);
 
-        if (FileHelpers.isEmpty(sharedPrefsBackupDir)) {
-            Log.d(TAG, "Oops. Backup folder is empty.");
-            MessageHelpers.showLongMessage(mContext, "Oops. Backup folder is empty.");
-            return;
-        }
-
-        if (mSharedPrefsDir.isDirectory()) {
-            // remove old data
-            FileHelpers.delete(mSharedPrefsDir);
-        }
-
-        FileHelpers.copy(sharedPrefsBackupDir, mSharedPrefsDir);
-        FileHelpers.copy(filesBackupDir, mFilesDir);
-        fixFileNames(mSharedPrefsDir);
+        try { SettingsBackup.restoreSettings(currentBackup,mFilesDir); }
+        catch(java.io.IOException failure){MessageHelpers.showLongMessage(mContext,"Settings restore failed");return;}
+        MessageHelpers.showLongMessage(mContext,"Settings restored. Accounts and passwords are excluded; sign in again if needed.");
 
         MessageHelpers.showMessage(mContext, R.string.msg_done);
 
@@ -335,7 +309,7 @@ public class BackupAndRestoreManager implements MotherActivity.OnPermissions {
             if (hasStoragePermissions(mContext)) {
                 if (hasAccessOnlyToAppFolders()) {
                     // Try to restore externally copied backup zip (if any)
-                    unpackBackupZip();
+                    // Archives are staged only after explicit file selection/approval.
                 }
                 callback.onBackupNames(getBackupNames());
             } else {

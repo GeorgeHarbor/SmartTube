@@ -135,7 +135,8 @@ public class GDriveBackupManager {
         File zipFile = new File(mContext.getCacheDir(), BACKUP_NAME);
         ZipHelper.zipFolder(source, zipFile, null);
 
-        Observable<Void> uploadFile = DriveService.uploadFile(zipFile, Uri.parse(String.format("%s/%s", backupDir, BACKUP_NAME)));
+        Observable<Void> uploadFile = DriveService.uploadFile(zipFile, Uri.parse(String.format("%s/%s", backupDir, BACKUP_NAME)))
+                .doFinally(() -> { zipFile.delete(); SafeZip.delete(source); });
 
         if (mIsBlocking) {
             RxHelper.runBlocking(uploadFile);
@@ -162,70 +163,32 @@ public class GDriveBackupManager {
         showRestoreChooserDialog();
     }
 
-    private void startRestoreOld(String backupDir, Runnable onError) {
-        mRestoreAction = DriveService.getFileList(Uri.parse(backupDir))
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io()) // run subscribe on separate thread
-                .subscribe(names -> {
-                    if (names == null)
-                        return;
-
-                    // remove old data
-                    for (String dataDir : mDataDirs) {
-                        FileHelpers.delete(dataDir);
-                    }
-
-                    for (String name : names) {
-                        if (name == null)
-                            continue;
-
-                        MessageHelpers.showLongMessage(mContext, mContext.getString(R.string.app_restore) + "\n" + name);
-
-                        DriveService.getFile(Uri.parse(String.format("%s/%s", backupDir, name)))
-                                .blockingSubscribe(inputStream -> FileHelpers.copy(inputStream, new File(mSharedPrefs, fixAltPackageName(name))));
-                    }
-
-                    // NOTE: Don't restart the app, just kill. The reboot will broke the files.
-                    // To apply settings we need to kill the app
-                    new Handler(mContext.getMainLooper()).postDelayed(() -> Runtime.getRuntime().exit(0), 1_000);
-                }, error -> {
-                    if (onError != null)
-                        onError.run();
-                    else MessageHelpers.showLongMessage(mContext, error.getMessage());
-                });
-    }
-
     private void startRestore(String backupDir, Runnable onError) {
         MessageHelpers.showLongMessage(mContext, mContext.getString(R.string.app_restore));
         mRestoreAction = DriveService.getFile(Uri.parse(String.format("%s/%s", backupDir, BACKUP_NAME)))
                 .subscribeOn(Schedulers.io())
+                .map(inputStream -> {
+                    File zipFile = new File(mContext.getCacheDir(),"drive-"+java.util.UUID.randomUUID()+".zip");
+                    File staging = new File(mContext.getCacheDir(),"restore-"+java.util.UUID.randomUUID());
+                    try {
+                        try(java.io.InputStream input=inputStream;java.io.FileOutputStream output=new java.io.FileOutputStream(zipFile)) {
+                            byte[] buffer=new byte[8192];long total=0;int count;
+                            while((count=input.read(buffer))!=-1){total+=count;if(total>100L*1024*1024)throw new java.io.IOException("Settings backup too large");output.write(buffer,0,count);}
+                        }
+                        SafeZip.extract(zipFile,staging);
+                        SettingsBackup.sanitizeTree(staging);
+                        SettingsBackup.restoreSettings(staging,mContext.getFilesDir());
+                        return true;
+                    } finally {SafeZip.delete(staging);zipFile.delete();}
+                })
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(inputStream -> {
-                    File zipFile = new File(mContext.getCacheDir(), BACKUP_NAME);
-                    FileHelpers.copy(inputStream, zipFile);
-
-                    File sharedPrefs = new File(mSharedPrefs);
-
-                    // remove old data
-                    for (String dataDir : mDataDirs) {
-                        FileHelpers.delete(dataDir);
-                    }
-
-                    if (ZipHelper.hasDirectories(zipFile)) { // the new format, dirs: /files /share_prefs
-                        ZipHelper.unzipToFolder(zipFile, new File(mRootDir));
-                    } else { // the old format: only xml files
-                        ZipHelper.unzipToFolder(zipFile, sharedPrefs);
-                    }
-                    fixFileNames(sharedPrefs);
-
-                    // NOTE: Don't restart the app, just kill. The reboot will broke the files.
-                    // To apply settings we need to kill the app
+                .subscribe(restored -> {
+                    MessageHelpers.showLongMessage(mContext,"Settings restored. Sign in again if needed; credentials are excluded.");
                     new Handler(mContext.getMainLooper()).postDelayed(() -> Runtime.getRuntime().exit(0), 1_000);
                 }, error -> {
-                    if (onError != null)
-                        onError.run();
-                    else MessageHelpers.showLongMessage(mContext, error.getMessage());
-                }, () -> MessageHelpers.showMessage(mContext, R.string.msg_done));
+                    if(onError!=null)onError.run();
+                    else MessageHelpers.showLongMessage(mContext,"Settings restore failed");
+                });
     }
 
     private void logIn(Runnable onDone) {
@@ -305,7 +268,7 @@ public class GDriveBackupManager {
             options.add(UiOptionItem.from(name, optionItem -> {
                 AppDialogUtil.showConfirmationDialog(mContext, mContext.getString(R.string.app_restore), () -> {
                     String backupDir = String.format("%s/%s", mRootBackupDir, name);
-                    startRestore(backupDir, () -> startRestoreOld(backupDir, null));
+                    startRestore(backupDir, () -> MessageHelpers.showLongMessage(mContext,"No compatible settings backup found"));
                 });
             }));
         }

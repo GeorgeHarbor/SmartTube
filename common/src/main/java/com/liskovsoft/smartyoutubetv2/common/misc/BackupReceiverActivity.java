@@ -27,7 +27,6 @@ public class BackupReceiverActivity extends Activity {
         // READ_EXTERNAL_STORAGE.
         if (PermissionHelpers.hasStoragePermissions(this) || AppInfoHelpers.getRealSdkVersion(this) > 29) {
             restoreData();
-            finish();
         } else {
             mPendingHandler = this::restoreData;
             PermissionHelpers.verifyStoragePermissions(this);
@@ -48,6 +47,7 @@ public class BackupReceiverActivity extends Activity {
                 if (mPendingHandler != null) {
                     mPendingHandler.run();
                     mPendingHandler = null;
+                    return;
                 }
             }
             finish();

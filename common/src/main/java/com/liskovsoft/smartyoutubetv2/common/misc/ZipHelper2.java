@@ -37,35 +37,13 @@ public class ZipHelper2 {
     }
 
     public static void unzip(File zipFile, File targetRoot) {
+        File staging=new File(targetRoot.getParentFile(),".import-"+java.util.UUID.randomUUID());
         try {
-            ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile));
-            String canonicalRoot = targetRoot.getCanonicalPath() + File.separator;
-            ZipEntry entry;
-            byte[] buffer = new byte[8192];
-
-            while ((entry = zis.getNextEntry()) != null) {
-                File out = new File(targetRoot, entry.getName());
-
-                String canonicalOut = out.getCanonicalPath();
-
-                // Zip Slip protection
-                if (!canonicalOut.startsWith(canonicalRoot)) {
-                    throw new IOException("Blocked Zip Slip entry: " + entry.getName());
-                }
-
-                if (entry.isDirectory()) {
-                    out.mkdirs();
-                } else {
-                    out.getParentFile().mkdirs();
-                    FileOutputStream fos = new FileOutputStream(out);
-                    int len;
-                    while ((len = zis.read(buffer)) > 0) fos.write(buffer, 0, len);
-                    fos.close();
-                }
-                zis.closeEntry();
-            }
-            zis.close();
-        } catch (Exception e) { e.printStackTrace(); }
+            SafeZip.extract(zipFile,staging);
+            SettingsBackup.sanitizeTree(staging);
+            com.liskovsoft.sharedutils.helpers.FileHelpers.copy(staging,targetRoot);
+        } catch(IOException failure) { throw new IllegalStateException("Invalid settings archive",failure); }
+        finally {SafeZip.delete(staging);}
     }
 
     public static boolean hasRootDir(File zipFile, String rootDir) {
