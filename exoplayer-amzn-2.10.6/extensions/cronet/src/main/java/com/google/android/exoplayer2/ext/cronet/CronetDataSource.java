@@ -658,6 +658,12 @@ public class CronetDataSource extends BaseDataSource implements HttpDataSource {
       if (request != currentUrlRequest) {
         return;
       }
+      if (!"https".equalsIgnoreCase(Uri.parse(newLocationUrl).getScheme())) {
+        exception = new IOException("Media redirects require HTTPS");
+        operation.open();
+        request.cancel();
+        return;
+      }
       if (currentDataSpec.httpMethod == DataSpec.HTTP_METHOD_POST) {
         int responseCode = info.getHttpStatusCode();
         // The industry standard is to disregard POST redirects when the status code is 307 or 308.

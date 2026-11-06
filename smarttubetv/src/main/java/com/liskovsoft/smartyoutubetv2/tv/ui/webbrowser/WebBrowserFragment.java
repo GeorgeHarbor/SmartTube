@@ -46,6 +46,17 @@ public class WebBrowserFragment extends Fragment implements WebBrowserView {
         mWebView.setBackgroundColor(Color.TRANSPARENT);
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webSettings.setAllowFileAccess(false);
+        webSettings.setAllowContentAccess(false);
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        mWebView.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return !"https".equalsIgnoreCase(android.net.Uri.parse(url).getScheme());
+            }
+            @Override public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                handler.cancel();
+            }
+        });
 
         // No caching
         //webSettings.setAppCacheEnabled(false);
@@ -61,6 +72,6 @@ public class WebBrowserFragment extends Fragment implements WebBrowserView {
 
     @Override
     public void loadUrl(String url) {
-        mWebView.loadUrl(url);
+        if (url != null && "https".equalsIgnoreCase(android.net.Uri.parse(url).getScheme())) mWebView.loadUrl(url);
     }
 }

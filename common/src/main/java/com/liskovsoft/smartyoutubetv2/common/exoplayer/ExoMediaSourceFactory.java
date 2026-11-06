@@ -121,7 +121,7 @@ public class ExoMediaSourceFactory {
 
     private DataSource.Factory buildDataSourceFactory(boolean useBandwidthMeter, int readTimeoutMs) {
         DefaultBandwidthMeter bandwidthMeter = useBandwidthMeter ? BANDWIDTH_METER : null;
-        return new DefaultDataSourceFactory(mContext, bandwidthMeter, buildHttpDataSourceFactory(useBandwidthMeter, readTimeoutMs));
+        return HttpsMediaDataSource.factory(new DefaultDataSourceFactory(mContext, bandwidthMeter, buildHttpDataSourceFactory(useBandwidthMeter, readTimeoutMs)));
     }
 
     /**
@@ -315,7 +315,7 @@ public class ExoMediaSourceFactory {
     private HttpDataSource.Factory buildDefaultHttpDataSourceFactory(DefaultBandwidthMeter bandwidthMeter, int readTimeoutMs) {
         DefaultHttpDataSourceFactory dataSourceFactory = new DefaultHttpDataSourceFactory(
                 USER_AGENT, bandwidthMeter, (int) OkHttpManager.getConnectTimeoutMs(),
-                readTimeoutMs, true); // allowCrossProtocolRedirects = true
+                readTimeoutMs, false); // Never follow HTTPS to HTTP redirects
 
         addCommonHeaders(dataSourceFactory); // cause troubles for some users
         return dataSourceFactory;
