@@ -1,5 +1,9 @@
 # SmartTube (uroge)
 
+<p align="center">
+  <img src="smarttubetv/src/main/res/drawable-nodpi/loading_brand_dark.png" alt="SmartTube (uroge) artwork" width="720">
+</p>
+
 An independently signed, security-maintained fork of
 [GeorgeHarbor/SmartTube](https://github.com/GeorgeHarbor/SmartTube), based on
 [yuliskov/SmartTube](https://github.com/yuliskov/SmartTube).
