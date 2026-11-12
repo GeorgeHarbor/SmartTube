@@ -277,9 +277,16 @@ public class SplashPresenter extends BasePresenter<SplashView> {
 
                 boolean finishOnEnded = IntentExtractor.hasFinishOnEndedFlag(intent);
                 boolean incognito = IntentExtractor.isIncognitoIntent(intent);
-                playbackPresenter.openVideo(videoId, finishOnEnded, timeMs, incognito);
-
                 enablePlayerOnlyModeIfNeeded(intent);
+
+                Runnable openVideo = () -> playbackPresenter.openVideo(videoId, finishOnEnded, timeMs, incognito);
+
+                // Back from the player returns to the main screen: create it underneath first, not on back
+                if (!getViewManager().isPlayerOnlyModeEnabled() && BrowsePresenter.instance(getContext()).getView() == null) {
+                    BrowsePresenter.instance(getContext()).startView(openVideo);
+                } else {
+                    openVideo.run();
+                }
 
                 return true;
             }

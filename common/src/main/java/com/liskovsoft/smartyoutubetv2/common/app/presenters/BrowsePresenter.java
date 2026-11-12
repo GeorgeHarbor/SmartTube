@@ -84,6 +84,7 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
     private long mLastUpdateTimeMs = -1;
     private int mBootSectionIndex;
     private int mBootstrapSectionId = -1;
+    private Runnable mOnViewCreated;
 
     private BrowsePresenter(Context context) {
         super(context);
@@ -133,6 +134,20 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         int selectedSectionIndex = findSectionIndex(mCurrentSection != null ? mCurrentSection.getId() : mBootstrapSectionId);
         mBootstrapSectionId = -1;
         getView().selectSection(selectedSectionIndex != -1 ? selectedSectionIndex : mBootSectionIndex, true);
+
+        if (mOnViewCreated != null) {
+            Runnable onViewCreated = mOnViewCreated;
+            mOnViewCreated = null;
+            onViewCreated.run();
+        }
+    }
+
+    /**
+     * Android doesn't create a screen that another one covers right away, so run the action once this one exists
+     */
+    public void startView(Runnable onViewCreated) {
+        mOnViewCreated = onViewCreated;
+        getViewManager().startView(BrowseView.class);
     }
 
     @Override

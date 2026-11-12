@@ -651,6 +651,12 @@
     <string name="hide_watched_from_home">Hide watched videos from Home</string>
     <string name="hide_watched_from_watch_later">Remove watched videos from Watch later playlist</string>
     <string name="remote_control_dial">Show in YouTube cast list (DIAL)</string>
+    <string name="settings_assistant">Assistant</string>
+    <string name="assistant_open_app">Make Assistant open SmartTube Harbor</string>
+    <string name="assistant_open_app_confirm">This disables the YouTube app so Google Assistant opens SmartTube Harbor instead. Continue?</string>
+    <string name="assistant_allow_debugging">If asked \"Allow network debugging?\", tick \"Always allow\" and press Allow</string>
+    <string name="assistant_enable_network_debugging">Turn on Network debugging in Developer options, then try again</string>
+    <string name="assistant_open_app_done">Done. Google Assistant now opens SmartTube Harbor</string>
     <string name="remote_control_permission">Background Remote control requires Overlay permission</string>
     <string name="login_from_browser">Login from browser</string>
     <string name="disable_remote_history">Disable history when using remote control</string>

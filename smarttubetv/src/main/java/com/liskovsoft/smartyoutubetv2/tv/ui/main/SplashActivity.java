@@ -1,6 +1,9 @@
 package com.liskovsoft.smartyoutubetv2.tv.ui.main;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import com.liskovsoft.sharedutils.helpers.GlobalConstants;
 import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.BrandedLoadingView;
 import android.os.Bundle;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.SplashPresenter;
@@ -24,7 +27,7 @@ public class SplashActivity extends MotherActivity implements SplashView {
 
         setContentView(new BrandedLoadingView(this));
 
-        mNewIntent = getIntent();
+        mNewIntent = tagAssistantIntent(getIntent());
 
         mPresenter = SplashPresenter.instance(this);
         mPresenter.setView(this);
@@ -37,9 +40,22 @@ public class SplashActivity extends MotherActivity implements SplashView {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
 
-        mNewIntent = intent;
+        mNewIntent = tagAssistantIntent(intent);
 
         mPresenter.onViewInitialized();
+    }
+
+    /**
+     * Google Assistant: back from the player returns to the app (like ATV launcher intents), not to the home screen
+     */
+    private Intent tagAssistantIntent(Intent intent) {
+        Uri referrer = Build.VERSION.SDK_INT >= 22 ? getReferrer() : null;
+
+        if (intent != null && referrer != null && "com.google.android.katniss".equals(referrer.getHost())) {
+            intent.putExtra(GlobalConstants.ATV_INTENT, true);
+        }
+
+        return intent;
     }
 
     @Override
