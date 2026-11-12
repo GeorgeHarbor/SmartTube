@@ -71,8 +71,8 @@ android {
         applicationId "app.smarttube"
         minSdkVersion project.properties.minSdkVersion
         targetSdkVersion project.properties.targetSdkVersion
-        versionCode 2459
-        versionName "32.69"
+        versionCode 2464
+        versionName "32.74"
 
         // Fork: local builds fetch the next release patch so About shows xx.xx.patch (CI writes the 3-part name itself at release)
         if (versionName ==~ /\d+\.\d+/) {
