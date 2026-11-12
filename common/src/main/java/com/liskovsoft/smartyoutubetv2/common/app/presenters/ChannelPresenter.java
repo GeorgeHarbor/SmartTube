@@ -2,6 +2,7 @@ package com.liskovsoft.smartyoutubetv2.common.app.presenters;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import com.liskovsoft.mediaserviceinterfaces.data.ChannelHeader;
 import com.liskovsoft.mediaserviceinterfaces.data.MediaGroup;
 import com.liskovsoft.mediaserviceinterfaces.data.MediaItem;
 import com.liskovsoft.sharedutils.helpers.Helpers;
@@ -18,6 +19,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.presenters.dialogs.menu.VideoMe
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.interfaces.VideoGroupPresenter;
 import com.liskovsoft.smartyoutubetv2.common.app.views.ChannelView;
 import com.liskovsoft.smartyoutubetv2.common.misc.BrowseProcessorManager;
+import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager;
 import com.liskovsoft.sharedutils.rx.RxHelper;
 import com.liskovsoft.smartyoutubetv2.common.utils.LoadingManager;
 import io.reactivex.Observable;
@@ -37,6 +39,8 @@ public class ChannelPresenter extends BasePresenter<ChannelView> implements Vide
     private Disposable mScrollAction;
     private int mSortIdx;
     private Video mChannel;
+    private ChannelHeader mChannelHeader;
+    private boolean mIsSubscribed;
 
     private interface OnChannelId {
         void onChannelId(String channelId);
@@ -96,7 +100,7 @@ public class ChannelPresenter extends BasePresenter<ChannelView> implements Vide
 
     @Override
     public void onVideoItemSelected(Video item) {
-        // NOP
+        MediaServiceManager.instance().prefetchFormatInfo(item);
     }
 
     @Override
@@ -152,6 +156,11 @@ public class ChannelPresenter extends BasePresenter<ChannelView> implements Vide
         }
 
         disposeActions();
+
+        // Opened by id (link, remote): the channel opened before isn't this one
+        if (mChannel != null && mChannel.channelId != null && !channelId.equals(mChannel.channelId)) {
+            mChannel = null;
+        }
 
         mChannelId = channelId;
 
@@ -221,6 +230,13 @@ public class ChannelPresenter extends BasePresenter<ChannelView> implements Vide
         getViewManager().startView(ChannelView.class);
 
         for (MediaGroup mediaGroup : mediaGroups) {
+            if (mediaGroup instanceof ChannelHeader) {
+                mChannelHeader = (ChannelHeader) mediaGroup;
+                mIsSubscribed = mChannelHeader.isSubscribed();
+                getView().setChannelHeader(mChannelHeader);
+                continue;
+            }
+
             if (mediaGroup.getMediaItems() == null) {
                 Log.e(TAG, "updateRowsHeader: MediaGroup is empty. Group Name: " + mediaGroup.getTitle());
                 continue;
@@ -296,6 +312,34 @@ public class ChannelPresenter extends BasePresenter<ChannelView> implements Vide
         if (group != null) {
             mediaGroups.addAll(0, group);
         }
+    }
+
+    public void onPlayMixClicked() {
+        if (mChannelHeader == null || mChannelHeader.getMixVideoId() == null) {
+            return;
+        }
+
+        Video video = new Video();
+        video.videoId = mChannelHeader.getMixVideoId();
+        video.playlistParams = mChannelHeader.getMixParams(); // the mix videos
+        PlaybackPresenter.instance(getContext()).openVideo(video);
+    }
+
+    /**
+     * @return new subscription state
+     */
+    public boolean onSubscribeClicked() {
+        if (mChannelHeader == null || mChannelHeader.getChannelId() == null) {
+            return mIsSubscribed;
+        }
+
+        String channelId = mChannelHeader.getChannelId();
+        RxHelper.execute(mIsSubscribed ?
+                getMediaItemService().unsubscribeObserve(channelId) : getMediaItemService().subscribeObserve(channelId));
+        mIsSubscribed = !mIsSubscribed;
+        MessageHelpers.showMessage(getContext(), mIsSubscribed ? R.string.subscribed_to_channel : R.string.unsubscribed_from_channel);
+
+        return mIsSubscribed;
     }
 
     public void clear() {

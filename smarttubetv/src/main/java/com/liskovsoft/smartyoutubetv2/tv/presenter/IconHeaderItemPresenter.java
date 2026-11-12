@@ -1,6 +1,8 @@
 package com.liskovsoft.smartyoutubetv2.tv.presenter;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -51,9 +53,55 @@ public class IconHeaderItemPresenter extends RowHeaderPresenter {
             int height = parent.getHeight() > 0 ? parent.getHeight() : parent.getResources().getDisplayMetrics().heightPixels;
             // Rows are 39dp (icon_header_item_youtube minHeight), the last one ends 28.5dp above the screen edge
             int free = height - parent.getPaddingTop() - Math.round(count * 39 * density) - Math.round(28.5f * density);
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                if (startsYouTubeGroup(parent, parent.getChildAt(i))) {
+                    free -= Math.round(YOUTUBE_GROUP_GAP_DP * density);
+                }
+            }
             outRect.top = Math.max(0, free);
         }
     };
+    private static final float YOUTUBE_GROUP_GAP_DP = 19;
+    /**
+     * YouTube color scheme: lines between the groups of the open sidebar (Home, Shorts | Subscriptions... | Music...)
+     */
+    public static final RecyclerView.ItemDecoration YOUTUBE_GROUP_DIVIDERS = new RecyclerView.ItemDecoration() {
+        private final Paint mPaint = new Paint();
+
+        @Override
+        public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+            if (startsYouTubeGroup(parent, view)) {
+                outRect.top = Math.round(YOUTUBE_GROUP_GAP_DP * parent.getResources().getDisplayMetrics().density);
+            }
+        }
+
+        @Override
+        public void onDraw(@NonNull Canvas canvas, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+            float density = parent.getResources().getDisplayMetrics().density;
+            mPaint.setColor(0xFF3F3F3F);
+            mPaint.setStrokeWidth(1.5f * density);
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                View child = parent.getChildAt(i);
+                if (startsYouTubeGroup(parent, child)) {
+                    float y = child.getTop() - YOUTUBE_GROUP_GAP_DP * density / 2;
+                    canvas.drawLine(child.getLeft(), y, child.getRight(), y, mPaint);
+                }
+            }
+        }
+    };
+
+    private static boolean startsYouTubeGroup(RecyclerView parent, View view) {
+        if (!sYouTubeSidebarExpanded) {
+            return false; // the closed sidebar is a plain column of icons
+        }
+        RecyclerView.ViewHolder holder = parent.getChildViewHolder(view);
+        if (!(holder instanceof ItemBridgeAdapter.ViewHolder)
+                || !(((ItemBridgeAdapter.ViewHolder) holder).getPresenter() instanceof IconHeaderItemPresenter)) {
+            return false;
+        }
+        int resId = ((IconHeaderItemPresenter) ((ItemBridgeAdapter.ViewHolder) holder).getPresenter()).mResId;
+        return resId == R.drawable.icon_subscriptions || resId == R.drawable.icon_music;
+    }
     private static boolean sYouTubeSidebarExpanded; // shortcut: one browse sidebar at a time, fine while there is only BrowseFragment
     private float mUnselectedAlpha;
     private final int mResId;
@@ -190,7 +238,17 @@ public class IconHeaderItemPresenter extends RowHeaderPresenter {
      * YouTube color scheme: every item is bright while the sidebar is open
      */
     public static void applyYouTubeSidebarState(VerticalGridView headers, boolean expanded) {
-        sYouTubeSidebarExpanded = expanded;
+        if (sYouTubeSidebarExpanded != expanded) {
+            sYouTubeSidebarExpanded = expanded;
+            headers.invalidateItemDecorations(); // group dividers
+            // Lay out now: the headers transition has already frozen the grid layout until it ends
+            boolean frozen = headers.isLayoutFrozen();
+            headers.setLayoutFrozen(false);
+            headers.measure(View.MeasureSpec.makeMeasureSpec(headers.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(headers.getHeight(), View.MeasureSpec.EXACTLY));
+            headers.layout(headers.getLeft(), headers.getTop(), headers.getRight(), headers.getBottom());
+            headers.setLayoutFrozen(frozen);
+        }
         for (int i = 0; i < headers.getChildCount(); i++) {
             View child = headers.getChildAt(i);
             RecyclerView.ViewHolder holder = headers.getChildViewHolder(child);

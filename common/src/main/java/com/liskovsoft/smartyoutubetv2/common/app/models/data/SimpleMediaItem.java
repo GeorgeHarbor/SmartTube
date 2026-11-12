@@ -4,6 +4,8 @@ import com.liskovsoft.mediaserviceinterfaces.data.FeedbackEndpoint;
 import com.liskovsoft.mediaserviceinterfaces.data.MediaItem;
 import com.liskovsoft.mediaserviceinterfaces.data.MediaItemMetadata;
 
+import java.util.List;
+
 public final class SimpleMediaItem implements MediaItem {
     private int mId;
     private String mVideoId;
@@ -198,6 +200,11 @@ public final class SimpleMediaItem implements MediaItem {
     @Override
     public String getBadgeText() {
         return mBadgeText;
+    }
+
+    @Override
+    public List<String> getQualityBadges() {
+        return null;
     }
 
     @Override

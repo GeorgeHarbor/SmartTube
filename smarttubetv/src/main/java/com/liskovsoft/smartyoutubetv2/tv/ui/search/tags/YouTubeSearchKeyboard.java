@@ -5,6 +5,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -30,6 +31,7 @@ public class YouTubeSearchKeyboard {
     private static final String[] SYMBOLS = {"1234567", "890&#()", "@!?:~\",", "._/+$%*"};
     private static final int MAX_SUGGESTIONS = 10;
     private static final int MAX_SUGGESTIONS_WITH_RESULTS = 5;
+    private static final int MAX_RECENT_SEARCHES = 5;
 
     public interface Callback {
         String getText();
@@ -142,8 +144,10 @@ public class YouTubeSearchKeyboard {
         int focusedIndex = focused != null ? mSuggestions.indexOfChild(focused) : -1;
         mSuggestions.removeAllViews();
         String query = mCallback.getText();
+        // Nothing typed: the list is the recent searches, YouTube shows five
+        int max = TextUtils.isEmpty(query) ? MAX_RECENT_SEARCHES : mMaxSuggestions;
 
-        for (int i = 0; i < Math.min(mTags.size(), mMaxSuggestions); i++) {
+        for (int i = 0; i < Math.min(mTags.size(), max); i++) {
             Tag tag = mTags.get(i);
             if (tag == null || tag.tag == null) {
                 continue;
@@ -173,7 +177,7 @@ public class YouTubeSearchKeyboard {
         view.setBackgroundResource(R.drawable.youtube_search_suggestion);
         view.setTextColor(ContextCompat.getColorStateList(mContext, R.color.youtube_sidebar_item_text));
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
-        view.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.youtube_search_icon, 0, 0, 0);
+        view.setCompoundDrawablesRelativeWithIntrinsicBounds(TextUtils.isEmpty(query) ? R.drawable.youtube_ic_history : R.drawable.youtube_search_icon, 0, 0, 0);
         view.setCompoundDrawablePadding(dp(7));
         TextViewCompat.setCompoundDrawableTintList(view, view.getTextColors());
 

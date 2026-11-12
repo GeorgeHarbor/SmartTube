@@ -5,6 +5,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.liskovsoft.mediaserviceinterfaces.data.ChannelHeader;
 import com.liskovsoft.sharedutils.helpers.Helpers;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.ChannelPresenter;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.interfaces.VideoGroupPresenter;
@@ -12,6 +13,8 @@ import com.liskovsoft.smartyoutubetv2.common.app.views.ChannelView;
 import com.liskovsoft.smartyoutubetv2.common.misc.CrashRestorer;
 import com.liskovsoft.smartyoutubetv2.common.prefs.MainUIData;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelHeaderPresenter.ChannelHeaderCallback;
+import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelInfoPresenter;
+import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelInfoPresenter.ChannelInfoRow;
 import com.liskovsoft.smartyoutubetv2.tv.ui.browse.video.MultipleRowsFragment;
 import com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.misc.ProgressBarManager;
 import com.liskovsoft.googlecommon.common.helpers.YouTubeHelper;
@@ -91,6 +94,27 @@ public class ChannelFragment extends MultipleRowsFragment implements ChannelView
             setPosition(idx);
         });
         mCrashRestorer.restorePlayback();
+    }
+
+    @Override
+    protected boolean isChannelPage() {
+        return true;
+    }
+
+    @Override
+    public void setChannelHeader(ChannelHeader header) {
+        setChannelBanner(header.getBannerUrl());
+        setChannelInfo(new ChannelInfoRow(header, new ChannelInfoPresenter.Callback() {
+            @Override
+            public void onPlayMixClicked() {
+                mChannelPresenter.onPlayMixClicked();
+            }
+
+            @Override
+            public boolean onSubscribeClicked() {
+                return mChannelPresenter.onSubscribeClicked();
+            }
+        }));
     }
 
     @Override

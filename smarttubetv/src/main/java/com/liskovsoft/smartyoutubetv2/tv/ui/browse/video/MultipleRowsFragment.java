@@ -27,6 +27,7 @@ import androidx.leanback.widget.Presenter;
 import androidx.leanback.widget.Row;
 import androidx.leanback.widget.RowPresenter;
 import androidx.leanback.widget.RowPresenter.ViewHolder;
+import androidx.leanback.widget.SearchBar;
 import androidx.leanback.widget.VerticalGridView;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,7 +41,10 @@ import com.liskovsoft.smartyoutubetv2.common.app.presenters.interfaces.VideoGrou
 import com.liskovsoft.smartyoutubetv2.common.prefs.MainUIData;
 import com.liskovsoft.smartyoutubetv2.tv.R;
 import com.liskovsoft.smartyoutubetv2.tv.adapter.VideoGroupObjectAdapter;
+import com.liskovsoft.smartyoutubetv2.tv.presenter.YouTubeChannelCardPresenter;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelHeaderPresenter;
+import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelInfoPresenter;
+import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelInfoPresenter.ChannelInfoRow;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ChannelHeaderPresenter.ChannelHeaderCallback;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.ShortsCardPresenter;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.VideoCardPresenter;
@@ -74,6 +78,8 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
     private View mHero;
     private boolean mHeroShown;
     private int mDefaultAlignTop;
+    private VideoCardPresenter mChannelCardPresenter;
+    private View mChannelBanner;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -83,6 +89,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         mCardPresenter = new VideoCardPresenter();
         mShortsPresenter = new ShortsCardPresenter();
         mHeroCardPresenter = new HeroCardPresenter();
+        mChannelCardPresenter = new YouTubeChannelCardPresenter();
         mBackgroundManager = ((LeanbackActivity) getActivity()).getBackgroundManager();
 
         setupAdapter();
@@ -107,8 +114,93 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         mHero = inflater.inflate(R.layout.youtube_hero, root, false);
         mHeroShown = false;
         root.addView(mHero);
-        root.addView(rows, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        FrameLayout.LayoutParams rowsParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        root.addView(rows, rowsParams);
+
+        if (isChannelPage()) {
+            addChannelViews(inflater, root, rowsParams);
+        }
+
         return root;
+    }
+
+    /**
+     * YouTube color scheme: the channel banner behind the rows and the search bar pinned above them
+     */
+    private void addChannelViews(LayoutInflater inflater, FrameLayout root, FrameLayout.LayoutParams rowsParams) {
+        rowsParams.topMargin = getResources().getDimensionPixelSize(R.dimen.youtube_channel_rows_top);
+        rowsParams.setMarginStart(getResources().getDimensionPixelSize(R.dimen.youtube_channel_rows_start));
+
+        mChannelBanner = inflater.inflate(R.layout.youtube_channel_banner, root, false);
+        root.addView(mChannelBanner, 0);
+
+        if (mChannelHeaderCallback != null) {
+            ChannelHeaderPresenter presenter = new ChannelHeaderPresenter();
+            Presenter.ViewHolder searchBar = presenter.onCreateViewHolder(root);
+            presenter.onBindViewHolder(searchBar, mChannelHeaderCallback);
+            SearchBar bar = searchBar.view.findViewById(R.id.lb_search_bar);
+            ViewUtil.applyYouTubeSearchBar(bar, getResources().getDimensionPixelSize(R.dimen.youtube_channel_mic_start));
+            bar.findViewById(R.id.lb_search_bar_items).getLayoutParams().width =
+                    getResources().getDimensionPixelSize(R.dimen.youtube_search_field_collapsed_width);
+            bar.setTitle(null); // "Search", the channel name is in the header
+            root.addView(searchBar.view, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        // Up from the header goes to the pinned search bar
+        getVerticalGridView().setFocusOutAllowed(true, false);
+        setAlignment(getResources().getDimensionPixelSize(R.dimen.youtube_channel_rows_align_top));
+    }
+
+    /**
+     * YouTube color scheme: channel page with the banner, the header row and the search bar pinned above the rows
+     */
+    protected boolean isChannelPage() {
+        return false;
+    }
+
+    private boolean hasSearchRow() {
+        return mChannelHeaderCallback != null && !(isChannelPage() && ViewUtil.isYouTubeStyle(getContext()));
+    }
+
+    /**
+     * YouTube color scheme: the channel header goes above the rows
+     */
+    protected void setChannelInfo(ChannelInfoRow row) {
+        if (mRowsAdapter == null || mChannelBanner == null) {
+            return;
+        }
+
+        if (mRowsAdapter.size() > 0 && mRowsAdapter.get(0) instanceof ChannelInfoRow) {
+            mRowsAdapter.replace(0, row);
+        } else {
+            mRowsAdapter.add(0, row);
+        }
+
+        setPosition(0);
+        updateChannelBanner(true);
+
+        if (getVerticalGridView() != null) { // Play mix instead of the search bar
+            getVerticalGridView().requestFocus();
+        }
+    }
+
+    private void updateChannelBanner(boolean show) {
+        if (mChannelBanner == null || show == (mChannelBanner.getVisibility() == View.VISIBLE)) {
+            return;
+        }
+
+        mChannelBanner.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    protected void setChannelBanner(String url) {
+        if (mChannelBanner == null) {
+            return;
+        }
+
+        Glide.with(mChannelBanner.getContext())
+                .load(url)
+                .apply(ViewUtil.glideOptions())
+                .into((ImageView) mChannelBanner.findViewById(R.id.channel_banner_image));
     }
 
     @Override
@@ -121,6 +213,10 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
     @Override
     public void setAlignment(int windowAlignOffsetFromTop) {
         super.setAlignment(windowAlignOffsetFromTop);
+
+        if (mChannelBanner != null && getVerticalGridView() != null) { // the channel header stays at the top
+            getVerticalGridView().setWindowAlignment(VerticalGridView.WINDOW_ALIGN_LOW_EDGE);
+        }
 
         if (mHeroShown && getVerticalGridView() != null) { // keep the featured row low
             mDefaultAlignTop = getVerticalGridView().getWindowAlignmentOffset();
@@ -169,7 +265,9 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
                 CustomListRowPresenter heroRowPresenter = new CustomListRowPresenter(ViewUtil.getFocusZoomFactor(getContext()));
                 heroRowPresenter.setShadowEnabled(false);
                 presenterSelector.addClassPresenter(HeroRow.class, heroRowPresenter);
-                mRowPresenter.setSelectedRowCardScale(ViewUtil.YOUTUBE_SELECTED_ROW_CARD_SCALE);
+                // Channel rows are the same size, like on YouTube
+                mRowPresenter.setSelectedRowCardScale(isChannelPage() ? 1 : ViewUtil.YOUTUBE_SELECTED_ROW_CARD_SCALE);
+                presenterSelector.addClassPresenter(ChannelInfoRow.class, new ChannelInfoPresenter());
                 int top = getResources().getDimensionPixelSize(R.dimen.youtube_row_padding_top);
                 int bottom = getResources().getDimensionPixelSize(R.dimen.youtube_row_padding_bottom);
                 mRowPresenter.setExpandedRowPadding(top, bottom);
@@ -190,16 +288,18 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         mCardPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
         mShortsPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
         mHeroCardPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
+        mChannelCardPresenter.setOnItemViewLongPressedListener(new ItemViewLongPressedListener());
     }
 
     @Override
     public void clear() {
         mHeroRow = null;
         updateHero(null);
+        updateChannelBanner(false);
 
         if (mRowsAdapter != null) {
             mRowsAdapter.clear();
-            if (mChannelHeaderCallback != null) {
+            if (hasSearchRow()) {
                 mRowsAdapter.add(mChannelHeaderCallback);
             }
         }
@@ -209,7 +309,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         }
 
         // Reset the position (bug appeared after fragment been reused)
-        setPosition(mChannelHeaderCallback != null ? 1 : 0);
+        setPosition(hasSearchRow() ? 1 : 0);
     }
 
     private void removeByIndex(int idx) {
@@ -301,7 +401,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         }
 
         // Correct position depending on the search bar presence
-        if (group.getPosition() != -1 && mChannelHeaderCallback != null) {
+        if (group.getPosition() != -1 && hasSearchRow()) {
             group.setPosition(group.getPosition() + 1);
         }
 
@@ -342,7 +442,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
             int videoGroupId = group.getId(); // Create unique int from category.
 
             VideoGroupObjectAdapter videoGroupAdapter = new VideoGroupObjectAdapter(group,
-                    group.isShorts() ? mShortsPresenter : isHeroRow ? mHeroCardPresenter : mCardPresenter);
+                    group.isShorts() ? mShortsPresenter : isHeroRow ? mHeroCardPresenter : isChannelGroup(group) ? mChannelCardPresenter : mCardPresenter);
 
             mVideoGroupAdapters.put(videoGroupId, videoGroupAdapter);
 
@@ -454,6 +554,11 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         return mDefaultAlignTop + getResources().getDimensionPixelSize(R.dimen.youtube_hero_row_shift);
     }
 
+    private boolean isChannelGroup(VideoGroup group) {
+        // YouTube color scheme: featured channels are round
+        return mChannelBanner != null && group.getVideos() != null && !group.getVideos().isEmpty() && group.getVideos().get(0).isChannel();
+    }
+
     private static class HeroRow extends ListRow {
         HeroRow(HeaderItem header, ObjectAdapter adapter) {
             super(header, adapter);
@@ -516,6 +621,9 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         @Override
         public void onItemSelected(Presenter.ViewHolder itemViewHolder, Object item,
                                    RowPresenter.ViewHolder rowViewHolder, Row row) {
+            // The banner is shown with the channel header only
+            updateChannelBanner(row instanceof ChannelInfoRow);
+
             if (item instanceof Video) {
                 updateHero(row == mHeroRow ? (Video) item : null);
 

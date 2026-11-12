@@ -94,6 +94,17 @@
     <dimen name="youtube_card_content_line_spacing">4dp</dimen>
     <!-- YouTube color scheme: how much lower the featured row sits to make room for the featured video details -->
     <dimen name="youtube_hero_row_shift">174dp</dimen>
+    <!-- YouTube color scheme: channel page (search bar pinned above the rows, header with the banner) -->
+    <dimen name="youtube_channel_rows_top">80dp</dimen>
+    <dimen name="youtube_channel_rows_start">38dp</dimen>
+    <dimen name="youtube_channel_mic_start">48dp</dimen>
+    <dimen name="youtube_channel_info_height">362dp</dimen>
+    <!-- The focused row sits right under the search bar -->
+    <dimen name="youtube_channel_rows_align_top">38dp</dimen>
+    <dimen name="youtube_channel_avatar_size">36dp</dimen>
+    <dimen name="youtube_channel_button_height">36dp</dimen>
+    <dimen name="youtube_channel_card_size">148dp</dimen>
+    <dimen name="youtube_card_thumbnail_radius">8dp</dimen>
 
     <!-- Make search bar more compact so more buttons could be added after it. -->
     <dimen name="lb_search_bar_items_width">600dp</dimen>

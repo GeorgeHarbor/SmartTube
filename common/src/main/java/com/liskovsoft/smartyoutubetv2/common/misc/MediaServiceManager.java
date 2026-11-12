@@ -52,6 +52,9 @@ public class MediaServiceManager implements OnAccountChange {
     private Disposable mRowsAction;
     private Disposable mSubscribedChannelsAction;
     private Disposable mFormatInfoAction;
+    private Video mPrefetchVideo;
+    private final Runnable mPrefetchFormatInfo = () -> loadFormatInfo(mPrefetchVideo, formatInfo -> {});
+    private static final long PREFETCH_DELAY_MS = 500; // skip the cards passed while scrolling
     private Disposable mPlaylistGroupAction;
     private Disposable mPlaylistInfosAction;
     private Disposable mHistoryAction;
@@ -258,6 +261,21 @@ public class MediaServiceManager implements OnAccountChange {
                         onFormatInfo::onFormatInfo,
                         error -> Log.e(TAG, "loadFormatInfo error: %s", error.getMessage())
                 );
+    }
+
+    /**
+     * Fork: fetch the focused video's playback data while the user decides, so the click starts faster.<br/>
+     * The service caches the last result, the player picks it up.
+     */
+    public void prefetchFormatInfo(Video item) {
+        Utils.removeCallbacks(mPrefetchFormatInfo);
+
+        if (item == null || !item.hasVideo() || item.isLive || item.isUpcoming) {
+            return;
+        }
+
+        mPrefetchVideo = item;
+        Utils.postDelayed(mPrefetchFormatInfo, PREFETCH_DELAY_MS);
     }
 
     public void loadPlaylists(Video item, OnMediaGroup onPlaylistGroup) {

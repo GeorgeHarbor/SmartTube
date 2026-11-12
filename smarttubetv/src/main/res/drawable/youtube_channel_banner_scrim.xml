@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube color scheme: dims the channel banner, darker behind the header text -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="#4D0F0F0F"/>
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <gradient android:angle="0" android:startColor="#B30F0F0F" android:centerColor="#4D0F0F0F" android:endColor="#000F0F0F"/>
+        </shape>
+    </item>
+</layer-list>

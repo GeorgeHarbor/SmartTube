@@ -214,8 +214,11 @@ public class NavigateTitleView extends TitleView implements OnDataChange, Accoun
         }
 
         float shift = expanded ? getResources().getDimension(R.dimen.youtube_sidebar_expand_shift) : 0;
-        mMicView.animate().translationX(shift);
-        mSearchPill.animate().translationX(shift);
+        // Jump with the sidebar: a slide lags behind the content and runs over the account name
+        mMicView.animate().cancel();
+        mSearchPill.animate().cancel();
+        mMicView.setTranslationX(shift);
+        mSearchPill.setTranslationX(shift);
 
         Account current = MediaServiceManager.instance().getSelectedAccount();
         String name = current != null ? (current.getName() != null ? current.getName() : current.getEmail()) : null;

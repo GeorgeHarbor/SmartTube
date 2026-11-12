@@ -85,7 +85,7 @@ public class ChannelUploadsPresenter extends BasePresenter<ChannelUploadsView> i
 
     @Override
     public void onVideoItemSelected(Video item) {
-        // NOP
+        MediaServiceManager.instance().prefetchFormatInfo(item);
     }
 
     @Override

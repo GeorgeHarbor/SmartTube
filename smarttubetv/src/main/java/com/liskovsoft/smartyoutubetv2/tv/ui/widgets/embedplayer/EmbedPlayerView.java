@@ -11,6 +11,7 @@ import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.video.VideoListener;
 import com.liskovsoft.mediaserviceinterfaces.data.MediaItemFormatInfo;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.VideoGroup;
@@ -43,7 +44,6 @@ public class EmbedPlayerView extends PlayerView implements PlaybackView {
     private PlaybackPresenter mPlaybackPresenter;
     private Video mVideo;
     private boolean mIsMute;
-    private final Runnable mShowView = this::showView;
     private final Runnable mStopPlayback = this::finish;
     private int mQuality;
     private float mPercentWatched;
@@ -547,6 +547,13 @@ public class EmbedPlayerView extends PlayerView implements PlaybackView {
         DefaultRenderersFactory renderersFactory = new CustomOverridesRenderersFactory(getContext());
         mPlayer = mPlayerInitializer.createPlayer(getContext(), renderersFactory, trackSelector);
         mPlayer.setPlayWhenReady(true);
+        mPlayer.addVideoListener(new VideoListener() {
+            @Override
+            public void onRenderedFirstFrame() {
+                // Fork: keep the thumbnail until there's a picture (the stream start may wait seconds for the server)
+                showView();
+            }
+        });
         //mPlayer.setRepeatMode(Player.REPEAT_MODE_ONE);
 
         mExoPlayerController.setPlayer(mPlayer);
@@ -564,7 +571,6 @@ public class EmbedPlayerView extends PlayerView implements PlaybackView {
 
     private void destroyPlayerObjects() {
         if (isEngineInitialized()) {
-            Utils.removeCallbacks(mShowView);
             Utils.removeCallbacks(mStopPlayback);
             // Don't replace main player!
             if (mPlaybackPresenter.getView() == null || mPlaybackPresenter.getView() == this) {
@@ -595,8 +601,6 @@ public class EmbedPlayerView extends PlayerView implements PlaybackView {
     }
 
     private void onVideoLoaded() {
-        // Fix the screen becomes black for a moment
-        Utils.postDelayed(mShowView, 1_000);
         if (mIsMute) { // Save bandwidth if the previews are muted
             Utils.postDelayed(mStopPlayback, 5 * 60 * 1_000);
         }

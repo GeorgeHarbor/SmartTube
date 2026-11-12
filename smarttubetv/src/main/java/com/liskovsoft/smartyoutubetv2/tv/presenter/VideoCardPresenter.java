@@ -5,13 +5,17 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Build.VERSION;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -31,6 +35,7 @@ import com.liskovsoft.smartyoutubetv2.tv.R;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.base.LongClickPresenter;
 import com.liskovsoft.smartyoutubetv2.tv.ui.browse.video.GridFragmentHelper;
 import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.complexcardview.ComplexImageCardView;
+import com.liskovsoft.smartyoutubetv2.tv.util.ChipSpan;
 import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
 
 /*
@@ -39,6 +44,8 @@ import com.liskovsoft.smartyoutubetv2.tv.util.ViewUtil;
  */
 public class VideoCardPresenter extends LongClickPresenter {
     private static final String TAG = VideoCardPresenter.class.getSimpleName();
+    private static final int YOUTUBE_CHIP_BACKGROUND = 0xFF272727;
+    private static final int YOUTUBE_CHIP_TEXT = 0xFFAAAAAA;
     private int mDefaultBackgroundColor = -1;
     private int mDefaultTextColor = -1;
     private int mSelectedBackgroundColor = -1;
@@ -145,18 +152,53 @@ public class VideoCardPresenter extends LongClickPresenter {
         thumbnail.setPadding(ring, ring, ring, ring);
 
         if (VERSION.SDK_INT >= 21) {
-            for (int id : new int[] {R.id.main_image, R.id.preview_container}) {
-                View picture = thumbnail.findViewById(id);
-                if (picture != null) {
-                    picture.setBackground(ContextCompat.getDrawable(context, R.drawable.youtube_card_thumbnail));
-                    picture.setClipToOutline(true); // outline comes from the rounded background
-                }
+            View picture = thumbnail.findViewById(R.id.main_image);
+            if (picture != null) {
+                picture.setBackground(ContextCompat.getDrawable(context, R.drawable.youtube_card_thumbnail));
+                picture.setClipToOutline(true); // outline comes from the rounded background
+            }
+            View preview = thumbnail.findViewById(R.id.preview_container);
+            if (preview != null) {
+                // Rounded corners without a fill: the thumbnail stays visible until the preview has a picture
+                float radius = res.getDimension(R.dimen.youtube_card_thumbnail_radius);
+                preview.setOutlineProvider(new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                    }
+                });
+                preview.setClipToOutline(true);
             }
         }
 
         if (VERSION.SDK_INT >= 23) {
             thumbnail.setForeground(ContextCompat.getDrawable(context, R.drawable.youtube_card_focus));
         }
+    }
+
+    private static CharSequence getYouTubeContentText(Context context, Video video) {
+        if (video.getSecondTitle() == null) {
+            return null;
+        }
+
+        // Like YouTube: channel on the first line, views and date on the second
+        String text = video.getSecondTitle().toString().replaceFirst(" " + Video.TERTIARY_TEXT_DELIM + " ", "\n");
+
+        if (video.qualityBadges == null) {
+            return text;
+        }
+
+        // 4K, CC chips before the view count
+        float density = context.getResources().getDisplayMetrics().density;
+        SpannableStringBuilder badges = new SpannableStringBuilder();
+        for (String badge : video.qualityBadges) {
+            int start = badges.length();
+            badges.append(badge);
+            badges.setSpan(new ChipSpan(YOUTUBE_CHIP_BACKGROUND, YOUTUBE_CHIP_TEXT, 4 * density, 3 * density), start, badges.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            badges.append(' ');
+        }
+
+        return new SpannableStringBuilder(text).insert(text.indexOf('\n') + 1, badges);
     }
 
     private void updateCardBackgroundColor(ComplexImageCardView view, boolean selected) {
@@ -195,9 +237,7 @@ public class VideoCardPresenter extends LongClickPresenter {
         Context context = cardView.getContext();
 
         cardView.setTitleText(video.getTitle());
-        cardView.setContentText(mIsYouTubeStyle && video.getSecondTitle() != null ?
-                // Like YouTube: channel on the first line, views and date on the second
-                video.getSecondTitle().toString().replaceFirst(" " + Video.TERTIARY_TEXT_DELIM + " ", "\n") : video.getSecondTitle());
+        cardView.setContentText(mIsYouTubeStyle ? getYouTubeContentText(context, video) : video.getSecondTitle());
         // Count progress that very close to zero. E.g. when user closed video immediately.
         cardView.setProgress(video.percentWatched > 0 && video.percentWatched < 1 ? 1 : Math.round(video.percentWatched));
         cardView.setBadgeText(

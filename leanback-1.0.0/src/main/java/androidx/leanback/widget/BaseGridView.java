@@ -239,6 +239,13 @@ public abstract class BaseGridView extends RecyclerView {
         });
     }
 
+    /**
+     * MOD: lets the focus leave the grid through the front/end (e.g. to a view pinned above the rows)
+     */
+    public void setFocusOutAllowed(boolean throughFront, boolean throughEnd) {
+        mLayoutManager.setFocusOutAllowed(throughFront, throughEnd);
+    }
+
     void initBaseGridViewAttributes(Context context, AttributeSet attrs) {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.lbBaseGridView);
         boolean throughFront = a.getBoolean(R.styleable.lbBaseGridView_focusOutFront, false);

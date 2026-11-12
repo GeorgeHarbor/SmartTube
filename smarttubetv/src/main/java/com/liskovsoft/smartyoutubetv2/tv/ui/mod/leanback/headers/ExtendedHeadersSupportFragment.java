@@ -50,6 +50,7 @@ public class ExtendedHeadersSupportFragment extends HeadersSupportFragment {
                 }
             });
             getVerticalGridView().addItemDecoration(IconHeaderItemPresenter.YOUTUBE_SETTINGS_AT_BOTTOM);
+            getVerticalGridView().addItemDecoration(IconHeaderItemPresenter.YOUTUBE_GROUP_DIVIDERS);
         }
     }
 

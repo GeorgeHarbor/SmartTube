@@ -5,11 +5,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -20,7 +17,6 @@ import android.view.ViewTreeObserver.OnGlobalFocusChangeListener;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
-import androidx.core.content.ContextCompat;
 import androidx.leanback.app.RowsSupportFragment;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.HeaderItem;
@@ -28,8 +24,6 @@ import androidx.leanback.widget.ListRow;
 import androidx.leanback.widget.ListRowPresenter;
 import androidx.leanback.widget.ObjectAdapter;
 import androidx.leanback.widget.RowPresenter.ViewHolder;
-import androidx.leanback.widget.SearchOrbView.Colors;
-import androidx.leanback.widget.SpeechOrbView;
 import androidx.leanback.widget.SpeechRecognitionCallback;
 import androidx.leanback.widget.VerticalGridView;
 import com.liskovsoft.sharedutils.helpers.MessageHelpers;
@@ -430,54 +424,15 @@ public abstract class SearchTagsFragmentBase extends SearchSupportFragment
         root.addView(logo, logoParams);
 
         View bar = root.findViewById(R.id.lb_search_bar);
-        ((MarginLayoutParams) bar.getLayoutParams()).topMargin = res.getDimensionPixelSize(R.dimen.youtube_search_bar_top);
-        bar.findViewById(R.id.lb_search_bar_search_orb).setVisibility(View.GONE);
+        ViewUtil.applyYouTubeSearchBar(bar, res.getDimensionPixelSize(R.dimen.youtube_search_mic_start));
         bar.findViewById(R.id.search_settings_orb).setVisibility(View.GONE); // moved to the globe key
-
-        int buttonSize = res.getDimensionPixelSize(R.dimen.youtube_title_button_size);
 
         // No system keyboard: the field only shows what is typed on the on-screen one
         TextView editor = bar.findViewById(R.id.lb_search_text_editor);
         editor.setFocusable(false);
         editor.setFocusableInTouchMode(false);
         editor.setCursorVisible(false);
-        ((MarginLayoutParams) editor.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_text_margin_start));
-        editor.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        editor.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        int textColor = ContextCompat.getColor(context, R.color.youtube_sidebar_item_text);
-        int hintColor = ContextCompat.getColor(context, R.color.scheme_youtube_secondary_text);
-        editor.setTextColor(textColor);
-        editor.setHintTextColor(hintColor);
         mSearchField = bar.findViewById(R.id.lb_search_bar_items);
-        mSearchField.setBackgroundResource(R.drawable.youtube_search_pill);
-        MarginLayoutParams fieldParams = (MarginLayoutParams) mSearchField.getLayoutParams();
-        fieldParams.height = buttonSize;
-        fieldParams.setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_field_margin_start));
-
-        SpeechOrbView mic = bar.findViewById(R.id.lb_search_bar_speech_orb);
-        ((MarginLayoutParams) mic.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_mic_start));
-        View micCircle = mic.findViewById(R.id.search_orb);
-        micCircle.getLayoutParams().width = buttonSize;
-        micCircle.getLayoutParams().height = buttonSize;
-        Colors normal = new Colors(ContextCompat.getColor(context, R.color.scheme_youtube_thumbnail),
-                ContextCompat.getColor(context, R.color.scheme_youtube_thumbnail), Color.WHITE);
-        Colors focused = new Colors(Color.WHITE, Color.WHITE, ContextCompat.getColor(context, R.color.scheme_youtube_background));
-        mic.setNotListeningOrbColors(normal);
-        mic.setOrbColors(normal);
-        mic.setOrbIcon(ContextCompat.getDrawable(context, R.drawable.youtube_mic));
-        View.OnFocusChangeListener micListener = mic.getOnFocusChangeListener();
-        mic.setOnFocusChangeListener((v, hasFocus) -> {
-            if (micListener != null) {
-                micListener.onFocusChange(v, hasFocus);
-            }
-            Colors colors = hasFocus ? focused : normal;
-            mic.setNotListeningOrbColors(colors);
-            mic.setOrbColors(colors);
-            mic.setOrbIcon(ContextCompat.getDrawable(context, R.drawable.youtube_mic));
-            // The bar dims the text on focus changes
-            editor.setTextColor(textColor);
-            editor.setHintTextColor(hintColor);
-        });
 
         mResultsFrame = root.findViewById(R.id.lb_results_frame);
         ((MarginLayoutParams) mResultsFrame.getLayoutParams()).setMarginStart(res.getDimensionPixelSize(R.dimen.youtube_search_rows_start));

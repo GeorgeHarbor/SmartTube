@@ -138,6 +138,12 @@ public class SplashPresenter extends BasePresenter<SplashView> {
     }
 
     private void checkForUpdates() {
+        // Fork: don't compete with the player for the network (a starting video is slow enough already)
+        if (getViewManager().isPlayerInForeground()) {
+            Utils.postDelayed(mCheckForUpdates, APP_INIT_DELAY_MS);
+            return;
+        }
+
         BootDialogPresenter updatePresenter = BootDialogPresenter.instance(getContext());
         updatePresenter.start();
     }

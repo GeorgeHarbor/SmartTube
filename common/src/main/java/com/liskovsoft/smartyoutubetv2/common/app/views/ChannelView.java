@@ -1,5 +1,6 @@
 package com.liskovsoft.smartyoutubetv2.common.app.views;
 
+import com.liskovsoft.mediaserviceinterfaces.data.ChannelHeader;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.VideoGroup;
 
 public interface ChannelView {
@@ -7,4 +8,5 @@ public interface ChannelView {
     void setPosition(int index);
     void showProgressBar(boolean show);
     void clear();
+    void setChannelHeader(ChannelHeader header);
 }

@@ -50,10 +50,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,9 +60,11 @@ import io.reactivex.disposables.Disposable;
 
 public class BrowsePresenter extends BasePresenter<BrowseView> implements SectionPresenter, VideoGroupPresenter, AccountChangeListener {
     private static final String TAG = BrowsePresenter.class.getSimpleName();
-    private static final Set<Integer> YOUTUBE_SIDEBAR_SECTIONS = new HashSet<>(Arrays.asList(
-            MediaGroup.TYPE_HOME, MediaGroup.TYPE_SHORTS, MediaGroup.TYPE_MUSIC,
-            MediaGroup.TYPE_SUBSCRIPTIONS, MediaGroup.TYPE_USER_PLAYLISTS, MediaGroup.TYPE_HISTORY, MediaGroup.TYPE_SETTINGS));
+    // In YouTube's order. The sidebar draws a divider before Subscriptions and Music (IconHeaderItemPresenter).
+    private static final List<Integer> YOUTUBE_SIDEBAR_SECTIONS = Arrays.asList(
+            MediaGroup.TYPE_HOME, MediaGroup.TYPE_SHORTS,
+            MediaGroup.TYPE_SUBSCRIPTIONS, MediaGroup.TYPE_HISTORY, MediaGroup.TYPE_USER_PLAYLISTS,
+            MediaGroup.TYPE_MUSIC, MediaGroup.TYPE_GAMING, MediaGroup.TYPE_NEWS, MediaGroup.TYPE_SPORTS, MediaGroup.TYPE_SETTINGS);
     @SuppressLint("StaticFieldLeak")
     private static BrowsePresenter sInstance;
     private static boolean sIsPlaybackWarmedUp;
@@ -259,6 +259,16 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
                 }
             }
         }
+
+        if (getMainUIData().isYouTubeColorScheme()) {
+            // Stable sort: the hidden sections keep their order after the shown ones
+            Collections.sort(mSections, (o1, o2) -> getYouTubeSidebarIndex(o1) - getYouTubeSidebarIndex(o2));
+        }
+    }
+
+    private static int getYouTubeSidebarIndex(BrowseSection section) {
+        int index = YOUTUBE_SIDEBAR_SECTIONS.indexOf(section.getId());
+        return index != -1 ? index : YOUTUBE_SIDEBAR_SECTIONS.size();
     }
 
     private void initPinnedCallbacks() {
@@ -422,6 +432,8 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         if (getView() == null) {
             return;
         }
+
+        MediaServiceManager.instance().prefetchFormatInfo(item);
 
         if (belongsToChannelUploadsMultiGrid(item)) {
             if (getMainUIData().isUploadsAutoLoadEnabled()) {

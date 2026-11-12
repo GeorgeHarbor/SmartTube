@@ -96,6 +96,7 @@ public class SearchPresenter extends BasePresenter<SearchView> implements VideoG
     @Override
     public void onVideoItemSelected(Video item) {
         mCurrentVideo = item;
+        MediaServiceManager.instance().prefetchFormatInfo(item);
     }
 
     @Override
