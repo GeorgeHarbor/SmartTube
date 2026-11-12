@@ -100,7 +100,10 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
 
         // The featured video is drawn behind the rows
         FrameLayout root = new FrameLayout(inflater.getContext());
-        root.setLayoutParams(rows.getLayoutParams());
+        // Null when declared via a <fragment> tag (ChannelFragment)
+        if (rows.getLayoutParams() != null) {
+            root.setLayoutParams(rows.getLayoutParams());
+        }
         mHero = inflater.inflate(R.layout.youtube_hero, root, false);
         mHeroShown = false;
         root.addView(mHero);
