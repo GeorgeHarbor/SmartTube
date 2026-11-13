@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 
 import com.liskovsoft.sharedutils.mylogger.Log;
-import com.liskovsoft.smartyoutubetv2.common.app.presenters.SearchPresenter;
 import com.liskovsoft.smartyoutubetv2.common.autoframerate.ModeSyncManager;
 import com.liskovsoft.smartyoutubetv2.common.misc.GlobalKeyTranslator;
 import com.liskovsoft.smartyoutubetv2.common.misc.MotherActivity;
@@ -37,12 +36,6 @@ public abstract class LeanbackActivity extends MotherActivity {
                 new PlayerKeyTranslator(this) :
                 new GlobalKeyTranslator(this);
         mGlobalKeyTranslator.apply();
-    }
-
-    @Override
-    public boolean onSearchRequested() {
-        SearchPresenter.instance(this).startSearch(null);
-        return true;
     }
 
     @SuppressLint("RestrictedApi")
