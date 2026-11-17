@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: sync-upstream
@@ -30,6 +31,7 @@ jobs:
           token: ${{ secrets.SYNC_TOKEN || github.token }}
 
       - name: Merge upstream
+        id: merge
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -40,6 +42,50 @@ jobs:
             exit 0
           fi
 
-          # A conflict with the fork's changes fails the run, and GitHub emails you to merge by hand
-          git merge --no-edit -m "Merge $UPSTREAM_REPO@$(git rev-parse --short FETCH_HEAD)" FETCH_HEAD
-          git push origin HEAD:master
+          if git merge --no-edit -m "Merge $UPSTREAM_REPO@$(git rev-parse --short FETCH_HEAD)" FETCH_HEAD; then
+            git push origin HEAD:master
+            exit 0
+          fi
+
+          # Conflicts go to Claude, and its resolution lands as a PR for review instead of on master
+          branch="sync/upstream-$(git rev-parse --short FETCH_HEAD)"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "$branch already exists, review its PR"
+            exit 0
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve conflicts with Claude
+        if: steps.merge.outputs.branch
+        uses: anthropics/claude-code-action@cc98b3ae241b0fcfb6a42a2690751afffecb4452 # v1
+        with:
+          # Set one of these secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) or ANTHROPIC_API_KEY
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: --allowedTools "Read,Edit,Glob,Grep,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+          prompt: |
+            A merge of ${{ env.UPSTREAM_REPO }} (MERGE_HEAD) into this fork (HEAD) stopped with conflicts.
+            List them with `git diff --name-only --diff-filter=U`.
+            Use `git log MERGE_HEAD..HEAD` and `git log HEAD..MERGE_HEAD` to understand what each side changed and why.
+            Edit every conflicted file so it keeps the fork's changes and also takes upstream's changes,
+            and remove all conflict markers. Do not stage, commit or touch files that are not conflicted.
+
+      - name: Open PR with the resolution
+        if: steps.merge.outputs.branch
+        env:
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+        run: |
+          # shortcut: assumes conflicted paths have no spaces and are not submodule pointers
+          conflicted=$(git diff --name-only --diff-filter=U)
+          if grep -lE '^(<<<<<<<|>>>>>>>)( |$)' $conflicted; then
+            echo "::error::Claude left conflict markers in the files above"
+            exit 1
+          fi
+          git add -- $conflicted
+          git commit --no-edit
+          git push origin "HEAD:refs/heads/$BRANCH"
+          gh pr create --base master --head "$BRANCH" \
+            --title "Merge $UPSTREAM_REPO ($BRANCH)" \
+            --body "Upstream merge with conflicts resolved by Claude in $conflicted. Review the merge commit before merging."
