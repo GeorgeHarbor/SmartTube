@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  UPSTREAM_REPO: yuliskov/SmartTube
-  UPSTREAM_BRANCH: master
+  UPSTREAM_REPO: GeorgeHarbor/SmartTube
+  UPSTREAM_BRANCH: test/claude-sync-upstream
 
 jobs:
   sync:
@@ -43,7 +43,7 @@ jobs:
           fi
 
           if git merge --no-edit -m "Merge $UPSTREAM_REPO@$(git rev-parse --short FETCH_HEAD)" FETCH_HEAD; then
-            git push origin HEAD:master
+            git push origin HEAD:test/claude-sync
             exit 0
           fi
 
@@ -86,6 +86,6 @@ jobs:
           git add -- $conflicted
           git commit --no-edit
           git push origin "HEAD:refs/heads/$BRANCH"
-          gh pr create --base master --head "$BRANCH" \
+          gh pr create --base test/claude-sync --head "$BRANCH" \
             --title "Merge $UPSTREAM_REPO ($BRANCH)" \
             --body "Upstream merge with conflicts resolved by Claude in $conflicted. Review the merge commit before merging."
