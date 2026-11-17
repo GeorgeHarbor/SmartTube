@@ -32,6 +32,9 @@ jobs:
 
       - name: Merge upstream
         id: merge
+        env:
+          # Must also have Contents write on the submodule forks
+          PUSH_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -47,12 +50,20 @@ jobs:
             exit 0
           fi
 
-          # Conflicts go to Claude, and its resolution lands as a PR for review instead of on master
           branch="sync/upstream-$(git rev-parse --short FETCH_HEAD)"
           if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
             echo "$branch already exists, review its PR"
             exit 0
           fi
+
+          .github/scripts/resolve-submodule-conflicts.sh
+          if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+            git commit --no-edit
+            git push origin HEAD:master
+            exit 0
+          fi
+
+          # Remaining conflicts go to Claude, and its resolution lands as a PR for review instead of on master
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Resolve conflicts with Claude
