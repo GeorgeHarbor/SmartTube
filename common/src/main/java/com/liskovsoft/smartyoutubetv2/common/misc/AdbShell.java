@@ -15,7 +15,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -58,7 +58,7 @@ public class AdbShell {
             DataInputStream in = new DataInputStream(socket.getInputStream());
             OutputStream out = socket.getOutputStream();
 
-            write(out, CNXN, 0x01000000, 4096, "host::\0".getBytes(StandardCharsets.UTF_8));
+            write(out, CNXN, 0x01000000, 4096, "host::\0".getBytes(Charset.forName("UTF-8")));
 
             boolean signed = false;
             Message msg = read(in);
@@ -76,7 +76,7 @@ public class AdbShell {
             }
 
             int localId = 1;
-            write(out, OPEN, localId, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
+            write(out, OPEN, localId, 0, ("shell:" + command + "\0").getBytes(Charset.forName("UTF-8")));
 
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             while (true) {
@@ -139,7 +139,7 @@ public class AdbShell {
         buffer.putInt(key.getPublicExponent().intValue());
 
         String encoded = Base64.encodeToString(buffer.array(), Base64.NO_WRAP) + " SmartTube@tv\0";
-        return encoded.getBytes(StandardCharsets.UTF_8);
+        return encoded.getBytes(Charset.forName("UTF-8"));
     }
 
     private static byte[] toLittleEndian(BigInteger value, int size) {
