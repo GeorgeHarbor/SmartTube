@@ -147,7 +147,7 @@ public class UriBackgroundManager {
             showBackgroundColorInternal(colorResId);
         } catch (NullPointerException e) {
             // Likely caused by OOM in View.setVisibility
-            Log.w(TAG, "showBackgroundColor: NPE swallowed", e);
+            Log.w(TAG, "showBackgroundColor: NPE swallowed, colorResId=" + colorResId, e);
         }
     }
 
