@@ -83,6 +83,12 @@ jobs:
             echo "::error::Claude left conflict markers in the files above"
             exit 1
           fi
+          # Claude's edits write LF; restore CRLF where the fork's version had it
+          for f in $conflicted; do
+            if git show "HEAD:$f" 2>/dev/null | grep -q $'\r'; then
+              sed -i 's/\r*$/\r/' "$f"
+            fi
+          done
           git add -- $conflicted
           git commit --no-edit
           git push origin "HEAD:refs/heads/$BRANCH"
